@@ -1,0 +1,27 @@
+# Build artifacts
+build/
+bin/
+*.o
+*.d
+
+# Binaries
+telegramdigger
+
+# DEB packages
+*.deb
+debian/telegramdigger/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Configuration (local)
+settings.conf
+.telegramdigger/
