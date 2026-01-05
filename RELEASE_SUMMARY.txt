@@ -1,0 +1,237 @@
+================================================================================
+                    TELEGRAMDIGGER v0.5.0 RELEASE SUMMARY
+================================================================================
+
+Release Date:     January 5, 2026
+Version:          0.5.0
+Developer:        KawaiiPantsu
+Organization:     THUGS(red) Hacking Community
+Contact:          thugsred@protonmail.com
+Repository:       https://github.com/kawaiipantsu/telegramdigger
+
+================================================================================
+                              RELEASE FILES
+================================================================================
+
+Binary Package:
+  telegramdigger_0.5.0_amd64.deb                  50 KB
+
+Documentation:
+  README.md                                       14 KB
+  CHANGELOG.md                                     6 KB
+  RELEASE_NOTES.md                               5.4 KB
+  RELEASE_v0.5.0.md                              3.5 KB
+  GITHUB_RELEASE_GUIDE.md                        3.2 KB
+
+Verification:
+  SHA256SUMS                                      97 bytes
+
+SHA256 Checksum:
+  fdbd102189a5dadc7d39f16f73923fd0bc3a8ae736a9f108d39d98478087a21f
+
+================================================================================
+                            KEY FEATURES (v0.5.0)
+================================================================================
+
+🔗 WEBHOOK MANAGEMENT
+   - Get webhook status and configuration
+   - Set webhook URL with validation
+   - Delete webhook configuration
+   Commands: --webhook-get, --webhook-set, --webhook-delete, --webhook-info
+
+👑 BOT ADMINISTRATOR RIGHTS
+   - Display default admin permissions for groups and channels
+   - 12 permission flags with color-coded indicators
+   - Separate sections for Groups/Supergroups and Channels
+   Command: --read-botrights
+
+📊 BULK TOKEN VALIDATION
+   - Validate multiple tokens from files
+   - CSV format support with timestamps
+   - Progress tracking and statistics
+   - Display bot names for valid tokens
+   Command: --bulk-validate [FILE]
+
+🔍 TOKEN VALIDATION & TRACKING
+   - Format and API validation
+   - Automatic token storage with metadata
+   - Secure CSV logging in ~/.telegramdigger/
+   - Bot information extraction
+   Command: --validate
+
+💾 AUTOMATIC TOKEN TRACKING
+   - Valid tokens saved in ~/.telegramdigger/valid-tokens/
+   - Token history in ~/.telegramdigger/tokens-seen
+   - Secure permissions (0600/0700)
+   - Timestamped entries
+
+🎨 USER EXPERIENCE
+   - ANSI 256-color terminal output
+   - UTF-8 icon support (Nerd Fonts)
+   - Professional ASCII art header
+   - Multiple token input methods (CLI, env, config)
+
+🔐 SECURITY FEATURES
+   - Stack protection enabled
+   - PIE (Position Independent Executable)
+   - RELRO (Read-only relocations)
+   - HTTPS-only with SSL verification
+   - Secure file permissions
+
+================================================================================
+                          TECHNICAL SPECIFICATIONS
+================================================================================
+
+Language:         C++17
+Build System:     GNU Make
+Dependencies:     libcurl4
+Package Size:     ~50 KB
+Binary Size:      ~168 KB
+Architecture:     amd64 (x86_64)
+Platform:         Linux (Debian/Ubuntu optimized)
+
+Compiler Flags:
+  - Standard: -std=c++17
+  - Optimization: -O2
+  - Security: -fstack-protector-strong -D_FORTIFY_SOURCE=2 -fPIE
+  - Warnings: -Wall -Wextra -Wpedantic -Wformat -Wformat-security
+
+Linker Flags:
+  - -pie -Wl,-z,relro,-z,now
+
+================================================================================
+                            INSTALLATION METHODS
+================================================================================
+
+Method 1: DEB Package (Recommended)
+  wget https://github.com/kawaiipantsu/telegramdigger/releases/download/v0.5.0/telegramdigger_0.5.0_amd64.deb
+  sudo dpkg -i telegramdigger_0.5.0_amd64.deb
+
+Method 2: Build from Source
+  sudo apt-get install build-essential libcurl4-openssl-dev
+  git clone https://github.com/kawaiipantsu/telegramdigger.git
+  cd telegramdigger
+  make
+  sudo make install
+
+Method 3: Local Build
+  make
+  ./bin/telegramdigger [OPTIONS]
+
+================================================================================
+                              QUICK START GUIDE
+================================================================================
+
+1. Install the package:
+   sudo dpkg -i telegramdigger_0.5.0_amd64.deb
+
+2. Set your bot token:
+   export TGDIGGER_TOKEN="123456789:ABCdefGHI..."
+
+3. Validate the token:
+   telegramdigger --validate
+
+4. Check admin rights:
+   telegramdigger --read-botrights
+
+5. View webhook status:
+   telegramdigger --webhook-get
+
+6. Get help:
+   telegramdigger --help
+
+================================================================================
+                           COMMAND REFERENCE
+================================================================================
+
+Token Management:
+  --validate                    Validate bot token via API
+  --bulk-validate [FILE]        Validate multiple tokens from file
+
+Bot Information:
+  --read-botrights              Read default administrator rights
+
+Webhook Operations:
+  --webhook-get                 Get current webhook information
+  --webhook-info                Get webhook status (alias)
+  --webhook-set <URL>           Set webhook URL
+  --webhook-delete              Delete webhook configuration
+
+General:
+  --help                        Show help message
+  --version                     Show version information
+  --about                       Show about information
+  --token <TOKEN>               Specify bot token
+
+Token Input Methods:
+  1. CLI: --token <TOKEN>
+  2. ENV: export TGDIGGER_TOKEN=<TOKEN>
+  3. CFG: ~/.telegramdigger/settings.conf
+
+================================================================================
+                         VERIFICATION & TESTING
+================================================================================
+
+Verify Package Integrity:
+  sha256sum -c SHA256SUMS
+
+Test Installation:
+  telegramdigger --version
+  telegramdigger --help
+
+Test with Token:
+  export TGDIGGER_TOKEN="YOUR_TOKEN"
+  telegramdigger --validate
+
+================================================================================
+                        GITHUB RELEASE CHECKLIST
+================================================================================
+
+[x] Version updated to 0.5.0
+[x] Code compiled successfully
+[x] DEB package built
+[x] Documentation complete
+[x] Checksums generated
+[x] Release notes written
+[ ] Git repository tagged (v0.5.0)
+[ ] GitHub release created
+[ ] Assets uploaded to GitHub
+[ ] Release published
+[ ] Downloads verified
+
+================================================================================
+                            SUPPORT & COMMUNITY
+================================================================================
+
+Issues:           https://github.com/kawaiipantsu/telegramdigger/issues
+Email:            thugsred@protonmail.com
+Organization:     THUGS(red) Hacking Community
+
+================================================================================
+                              LEGAL NOTICE
+================================================================================
+
+This tool is intended for:
+  ✓ Authorized security testing and penetration testing
+  ✓ CTF (Capture The Flag) challenges
+  ✓ Educational and research purposes
+  ✓ Defensive security analysis
+
+IMPORTANT: You must have explicit permission to test any bot tokens that you
+do not own. Unauthorized access to computer systems is illegal.
+
+Use this tool responsibly and ethically.
+
+================================================================================
+                           CREDITS & ACKNOWLEDGMENTS
+================================================================================
+
+Developer:        KawaiiPantsu
+Organization:     THUGS(red) Hacking Community
+Special Thanks:   The security research community
+
+Built with ❤️ for ethical hackers and security researchers worldwide.
+
+================================================================================
+                              END OF SUMMARY
+================================================================================
