@@ -220,6 +220,83 @@ bool TelegramApi::getMe(BotInfo& botInfo) {
     return true;
 }
 
+bool TelegramApi::getMyDefaultAdministratorRights(BotAdminRights& groupRights, BotAdminRights& channelRights) {
+    // Get group/supergroup rights
+    std::string url = buildUrl("getMyDefaultAdministratorRights");
+    HttpResponse response = httpClient_->get(url);
+
+    if (!response.success) {
+        lastResponse_.ok = false;
+        lastResponse_.description = "HTTP request failed: " + response.error;
+        return false;
+    }
+
+    // Parse JSON response
+    parseJsonResponse(response.body, lastResponse_);
+
+    if (!lastResponse_.ok) {
+        return false;
+    }
+
+    // Extract default administrator rights from result field
+    size_t resultPos = response.body.find("\"result\":");
+    if (resultPos == std::string::npos) {
+        return false;
+    }
+
+    std::string resultJson = response.body.substr(resultPos);
+
+    // Extract group/supergroup rights
+    groupRights.isAnonymous = extractJsonBool(resultJson, "is_anonymous");
+    groupRights.canManageChat = extractJsonBool(resultJson, "can_manage_chat");
+    groupRights.canDeleteMessages = extractJsonBool(resultJson, "can_delete_messages");
+    groupRights.canManageVideoChats = extractJsonBool(resultJson, "can_manage_video_chats");
+    groupRights.canRestrictMembers = extractJsonBool(resultJson, "can_restrict_members");
+    groupRights.canPromoteMembers = extractJsonBool(resultJson, "can_promote_members");
+    groupRights.canChangeInfo = extractJsonBool(resultJson, "can_change_info");
+    groupRights.canInviteUsers = extractJsonBool(resultJson, "can_invite_users");
+    groupRights.canPinMessages = extractJsonBool(resultJson, "can_pin_messages");
+    groupRights.canManageTopics = extractJsonBool(resultJson, "can_manage_topics");
+
+    // Get channel rights
+    url = buildUrl("getMyDefaultAdministratorRights?for_channels=true");
+    response = httpClient_->get(url);
+
+    if (!response.success) {
+        // If channel rights fail, just use group rights
+        channelRights = groupRights;
+        return true;
+    }
+
+    parseJsonResponse(response.body, lastResponse_);
+
+    if (!lastResponse_.ok) {
+        channelRights = groupRights;
+        return true;
+    }
+
+    // Extract channel rights
+    resultPos = response.body.find("\"result\":");
+    if (resultPos != std::string::npos) {
+        resultJson = response.body.substr(resultPos);
+
+        channelRights.isAnonymous = extractJsonBool(resultJson, "is_anonymous");
+        channelRights.canManageChat = extractJsonBool(resultJson, "can_manage_chat");
+        channelRights.canDeleteMessages = extractJsonBool(resultJson, "can_delete_messages");
+        channelRights.canManageVideoChats = extractJsonBool(resultJson, "can_manage_video_chats");
+        channelRights.canRestrictMembers = extractJsonBool(resultJson, "can_restrict_members");
+        channelRights.canPromoteMembers = extractJsonBool(resultJson, "can_promote_members");
+        channelRights.canChangeInfo = extractJsonBool(resultJson, "can_change_info");
+        channelRights.canInviteUsers = extractJsonBool(resultJson, "can_invite_users");
+        channelRights.canPostMessages = extractJsonBool(resultJson, "can_post_messages");
+        channelRights.canEditMessages = extractJsonBool(resultJson, "can_edit_messages");
+        channelRights.canPinMessages = extractJsonBool(resultJson, "can_pin_messages");
+        channelRights.canManageTopics = extractJsonBool(resultJson, "can_manage_topics");
+    }
+
+    return true;
+}
+
 const ApiResponse& TelegramApi::getLastResponse() const {
     return lastResponse_;
 }
@@ -229,6 +306,81 @@ std::string TelegramApi::getLastError() const {
         return lastResponse_.description;
     }
     return "Unknown error";
+}
+
+bool TelegramApi::getWebhookInfo(WebhookInfo& webhookInfo) {
+    std::string url = buildUrl("getWebhookInfo");
+    HttpResponse response = httpClient_->get(url);
+
+    if (!response.success) {
+        lastResponse_.ok = false;
+        lastResponse_.description = "HTTP request failed: " + response.error;
+        return false;
+    }
+
+    // Parse JSON response
+    parseJsonResponse(response.body, lastResponse_);
+
+    if (!lastResponse_.ok) {
+        return false;
+    }
+
+    // Extract webhook info from result field
+    size_t resultPos = response.body.find("\"result\":");
+    if (resultPos == std::string::npos) {
+        return false;
+    }
+
+    std::string resultJson = response.body.substr(resultPos);
+
+    // Extract webhook fields
+    webhookInfo.url = extractJsonString(resultJson, "url");
+    webhookInfo.hasCustomCertificate = extractJsonBool(resultJson, "has_custom_certificate");
+    webhookInfo.pendingUpdateCount = static_cast<int>(extractJsonInt(resultJson, "pending_update_count"));
+    webhookInfo.ipAddress = extractJsonString(resultJson, "ip_address");
+    webhookInfo.lastErrorDate = extractJsonInt(resultJson, "last_error_date");
+    webhookInfo.lastErrorMessage = extractJsonString(resultJson, "last_error_message");
+    webhookInfo.maxConnections = static_cast<int>(extractJsonInt(resultJson, "max_connections"));
+
+    return true;
+}
+
+bool TelegramApi::setWebhook(const std::string& webhookUrl, int maxConnections) {
+    // Build URL with parameters
+    std::ostringstream urlStream;
+    urlStream << buildUrl("setWebhook");
+    urlStream << "?url=" << webhookUrl;
+    urlStream << "&max_connections=" << maxConnections;
+
+    std::string url = urlStream.str();
+    HttpResponse response = httpClient_->get(url);
+
+    if (!response.success) {
+        lastResponse_.ok = false;
+        lastResponse_.description = "HTTP request failed: " + response.error;
+        return false;
+    }
+
+    // Parse JSON response
+    parseJsonResponse(response.body, lastResponse_);
+
+    return lastResponse_.ok;
+}
+
+bool TelegramApi::deleteWebhook() {
+    std::string url = buildUrl("deleteWebhook");
+    HttpResponse response = httpClient_->get(url);
+
+    if (!response.success) {
+        lastResponse_.ok = false;
+        lastResponse_.description = "HTTP request failed: " + response.error;
+        return false;
+    }
+
+    // Parse JSON response
+    parseJsonResponse(response.body, lastResponse_);
+
+    return lastResponse_.ok;
 }
 
 } // namespace TelegramDigger

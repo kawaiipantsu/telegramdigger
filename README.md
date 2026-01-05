@@ -21,6 +21,8 @@ A professional C++ security testing tool for analyzing and validating Telegram b
 
 - 🔍 **Token Validation** - Validate bot tokens via Telegram Bot API
 - 📊 **Bot Information Extraction** - Retrieve detailed bot capabilities and permissions
+- 👑 **Administrator Rights** - Read default bot administrator rights for groups and channels
+- 🔗 **Webhook Management** - Get, set, and delete webhooks for bot updates
 - 💾 **Token Tracking** - Automatic storage of validated tokens and metadata
 - 🎨 **Styled Terminal Output** - ANSI 256-color support with UTF-8 icons
 - 🔐 **Security Hardened** - Built with stack protection, PIE, and secure permissions
@@ -70,6 +72,202 @@ echo "bot_token=YOUR_BOT_TOKEN" >> ~/.telegramdigger/settings.conf
 telegramdigger --validate
 ```
 
+### Bulk Token Validation
+
+Validate multiple tokens from a file or from previously seen tokens:
+
+```bash
+# Validate tokens from a custom file (one token per line)
+telegramdigger --bulk-validate /path/to/tokens.txt
+
+# Validate all previously seen tokens (uses ~/.telegramdigger/tokens-seen)
+telegramdigger --bulk-validate
+```
+
+**Input File Format:**
+- One token per line
+- Comments start with `#`
+- Automatically handles CSV format (token#date)
+- Empty lines are ignored
+
+**Example tokens.txt:**
+```
+# My bot tokens
+123456789:ABCdefGHIjklMNOpqrsTUVwxyz-1234567890
+987654321:XYZabcDEFghiJKLmnoPQRstuvWXYZ-0987654321
+```
+
+**Output Format:**
+```
+[1/3] 123456789:ABCde... - ✓ VALID - MyBot (@my_bot)
+[2/3] 987654321:XYZab... - ✗ INVALID - HTTP request failed
+[3/3] 111222333:TestT... - ✓ VALID - TestBot (@test_bot)
+
+Summary:
+──────────────────────────────────────────────────
+Total tokens:    3
+Valid tokens:    2
+Invalid tokens:  1
+```
+
+### Bot Administrator Rights
+
+Retrieve the default administrator rights configured for your bot:
+
+```bash
+# Read bot admin rights using command-line argument
+telegramdigger --read-botrights --token "YOUR_BOT_TOKEN"
+
+# Using environment variable
+export TGDIGGER_TOKEN="YOUR_BOT_TOKEN"
+telegramdigger --read-botrights
+
+# Using config file
+echo "bot_token=YOUR_BOT_TOKEN" >> ~/.telegramdigger/settings.conf
+telegramdigger --read-botrights
+```
+
+**Output Format:**
+```
+ Reading Bot Default Administrator Rights
+──────────────────────────────────────────────────
+
+✓ Successfully retrieved bot rights
+
+Groups & Supergroups:
+──────────────────────────────────────────────────
+Is Anonymous:           No
+Can Manage Chat:        Yes
+Can Delete Messages:    Yes
+Can Manage Video Chats: Yes
+Can Restrict Members:   Yes
+Can Promote Members:    Yes
+Can Change Info:        Yes
+Can Invite Users:       Yes
+Can Pin Messages:       Yes
+Can Manage Topics:      Yes
+
+Channels:
+──────────────────────────────────────────────────
+Is Anonymous:           No
+Can Manage Chat:        Yes
+Can Delete Messages:    Yes
+Can Manage Video Chats: Yes
+Can Restrict Members:   No
+Can Promote Members:    Yes
+Can Change Info:        Yes
+Can Invite Users:       Yes
+Can Post Messages:      Yes
+Can Edit Messages:      Yes
+Can Pin Messages:       Yes
+Can Manage Topics:      No
+```
+
+### Webhook Management
+
+Telegram bots can receive updates in two ways: long polling (getUpdates) or webhooks. Webhooks allow Telegram to push updates to your server via HTTPS POST requests.
+
+#### Get Webhook Information
+
+```bash
+# Get current webhook status
+telegramdigger --webhook-get --token "YOUR_BOT_TOKEN"
+
+# Alias command
+telegramdigger --webhook-info --token "YOUR_BOT_TOKEN"
+
+# Using environment variable
+export TGDIGGER_TOKEN="YOUR_BOT_TOKEN"
+telegramdigger --webhook-get
+```
+
+**Output (No webhook set):**
+```
+ Webhook Information
+──────────────────────────────────────────────────
+
+✓ Successfully retrieved webhook information
+
+Webhook Status:
+──────────────────────────────────────────────────
+No webhook is currently set
+Use --webhook-set <URL> to configure a webhook
+```
+
+**Output (Webhook configured):**
+```
+ Webhook Information
+──────────────────────────────────────────────────
+
+✓ Successfully retrieved webhook information
+
+Webhook Status:
+──────────────────────────────────────────────────
+URL:                    https://example.com/webhook
+Custom Certificate:     No
+Pending Updates:        0
+IP Address:             203.0.113.42
+Max Connections:        40
+```
+
+#### Set Webhook URL
+
+```bash
+# Set webhook to your server
+telegramdigger --webhook-set https://example.com/webhook --token "YOUR_BOT_TOKEN"
+
+# Using environment variable
+export TGDIGGER_TOKEN="YOUR_BOT_TOKEN"
+telegramdigger --webhook-set https://example.com/webhook
+```
+
+**Important Requirements:**
+- URL must use HTTPS (required by Telegram)
+- Must have a valid SSL certificate
+- Must be publicly accessible from Telegram servers
+- Should respond with HTTP 200 OK to POST requests
+
+**Output:**
+```
+ Set Webhook
+──────────────────────────────────────────────────
+
+Setting webhook URL...
+URL: https://example.com/webhook
+
+✓ Webhook URL has been set successfully
+
+Note: Make sure your webhook URL:
+  - Uses HTTPS (required by Telegram)
+  - Has a valid SSL certificate
+  - Is publicly accessible
+  - Responds with HTTP 200 OK to POST requests
+```
+
+#### Delete Webhook
+
+```bash
+# Remove webhook (switch to long polling)
+telegramdigger --webhook-delete --token "YOUR_BOT_TOKEN"
+
+# Using environment variable
+export TGDIGGER_TOKEN="YOUR_BOT_TOKEN"
+telegramdigger --webhook-delete
+```
+
+**Output:**
+```
+ Delete Webhook
+──────────────────────────────────────────────────
+
+Deleting webhook...
+
+✓ Webhook has been deleted successfully
+
+Your bot will no longer receive updates via webhook.
+You can now use long polling (getUpdates) instead.
+```
+
 ### Token Format
 
 Telegram bot tokens follow the format: `<bot_id>:<token_hash>`
@@ -79,11 +277,17 @@ Telegram bot tokens follow the format: `<bot_id>:<token_hash>`
 ### Command-Line Options
 
 ```bash
-telegramdigger --help              # Show help message
-telegramdigger --version           # Show version information
-telegramdigger --about             # Show about information
-telegramdigger --token <TOKEN>     # Specify bot token
-telegramdigger --validate          # Validate token via API
+telegramdigger --help                    # Show help message
+telegramdigger --version                 # Show version information
+telegramdigger --about                   # Show about information
+telegramdigger --token <TOKEN>           # Specify bot token
+telegramdigger --validate                # Validate token via API
+telegramdigger --bulk-validate [FILE]    # Bulk validate tokens from file
+telegramdigger --read-botrights          # Read default bot admin rights
+telegramdigger --webhook-get             # Get current webhook information
+telegramdigger --webhook-info            # Get webhook status (alias)
+telegramdigger --webhook-set <URL>       # Set webhook URL
+telegramdigger --webhook-delete          # Delete webhook
 ```
 
 ### Environment Variables

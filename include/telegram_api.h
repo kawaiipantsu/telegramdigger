@@ -4,6 +4,7 @@
 #include "http_client.h"
 #include <string>
 #include <memory>
+#include <vector>
 
 namespace TelegramDigger {
 
@@ -21,6 +22,48 @@ struct BotInfo {
 
     BotInfo() : id(0), isBot(false), canJoinGroups(false),
                 canReadAllGroupMessages(false), supportsInlineQueries(false) {}
+};
+
+/**
+ * Bot administrator rights structure
+ */
+struct BotAdminRights {
+    bool isAnonymous;
+    bool canManageChat;
+    bool canDeleteMessages;
+    bool canManageVideoChats;
+    bool canRestrictMembers;
+    bool canPromoteMembers;
+    bool canChangeInfo;
+    bool canInviteUsers;
+    bool canPostMessages;       // Channels only
+    bool canEditMessages;       // Channels only
+    bool canPinMessages;
+    bool canManageTopics;
+
+    BotAdminRights() : isAnonymous(false), canManageChat(false),
+                       canDeleteMessages(false), canManageVideoChats(false),
+                       canRestrictMembers(false), canPromoteMembers(false),
+                       canChangeInfo(false), canInviteUsers(false),
+                       canPostMessages(false), canEditMessages(false),
+                       canPinMessages(false), canManageTopics(false) {}
+};
+
+/**
+ * Webhook information structure
+ */
+struct WebhookInfo {
+    std::string url;
+    bool hasCustomCertificate;
+    int pendingUpdateCount;
+    std::string ipAddress;
+    long long lastErrorDate;
+    std::string lastErrorMessage;
+    int maxConnections;
+    std::vector<std::string> allowedUpdates;
+
+    WebhookInfo() : hasCustomCertificate(false), pendingUpdateCount(0),
+                    lastErrorDate(0), maxConnections(0) {}
 };
 
 /**
@@ -59,6 +102,26 @@ public:
      * Get bot information
      */
     bool getMe(BotInfo& botInfo);
+
+    /**
+     * Get default bot administrator rights
+     */
+    bool getMyDefaultAdministratorRights(BotAdminRights& groupRights, BotAdminRights& channelRights);
+
+    /**
+     * Get webhook information
+     */
+    bool getWebhookInfo(WebhookInfo& webhookInfo);
+
+    /**
+     * Set webhook URL
+     */
+    bool setWebhook(const std::string& url, int maxConnections = 40);
+
+    /**
+     * Delete webhook
+     */
+    bool deleteWebhook();
 
     /**
      * Get last API response

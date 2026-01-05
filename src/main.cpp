@@ -5,6 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <vector>
 #include <cstring>
 #include <cstdlib>
 #include <ctime>
@@ -101,6 +102,26 @@ void showHelp() {
 
     std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "--validate"
               << Terminal::fg(Terminal::Color::WHITE) << "          Validate bot token via API\n";
+
+    std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "--bulk-validate"
+              << Terminal::fg(Terminal::Color::BRIGHT_CYAN) << " [FILE]"
+              << Terminal::fg(Terminal::Color::WHITE) << "  Bulk validate tokens (default: tokens-seen)\n";
+
+    std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "--read-botrights"
+              << Terminal::fg(Terminal::Color::WHITE) << "      Read default bot administrator rights\n";
+
+    std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "--webhook-get"
+              << Terminal::fg(Terminal::Color::WHITE) << "        Get current webhook information\n";
+
+    std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "--webhook-set"
+              << Terminal::fg(Terminal::Color::BRIGHT_CYAN) << " <URL>"
+              << Terminal::fg(Terminal::Color::WHITE) << "    Set webhook URL\n";
+
+    std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "--webhook-delete"
+              << Terminal::fg(Terminal::Color::WHITE) << "     Delete webhook\n";
+
+    std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "--webhook-info"
+              << Terminal::fg(Terminal::Color::WHITE) << "       Get webhook status (alias for --webhook-get)\n";
 
     std::cout << Terminal::reset() << std::endl;
 
@@ -422,6 +443,393 @@ void validateToken(const std::string& token) {
 }
 
 /**
+ * Bulk validate tokens from file
+ */
+void bulkValidateTokens(const std::string& filePath) {
+    std::cout << Terminal::fg(Terminal::Color::BRIGHT_CYAN) << Terminal::bold();
+    if (Terminal::supportsUTF8()) {
+        std::cout << Terminal::ICON_SEARCH << " ";
+    }
+    std::cout << "Bulk Token Validation" << Terminal::reset() << "\n";
+    std::cout << "──────────────────────────────────────────────────\n\n";
+
+    // Read tokens from file
+    std::ifstream file(filePath);
+    if (!file.is_open()) {
+        Terminal::error("Cannot open file: " + filePath);
+        return;
+    }
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE);
+    std::cout << "Reading tokens from: " << Terminal::fg(Terminal::Color::CYAN);
+    std::cout << filePath << "\n" << Terminal::reset() << "\n";
+
+    std::vector<std::string> tokens;
+    std::string line;
+    while (std::getline(file, line)) {
+        // Skip empty lines and comments
+        if (line.empty() || line[0] == '#') {
+            continue;
+        }
+
+        // Extract token (handle CSV format for tokens-seen)
+        size_t pos = line.find('#');
+        std::string token = (pos != std::string::npos) ? line.substr(0, pos) : line;
+
+        // Trim whitespace
+        size_t start = token.find_first_not_of(" \t\r\n");
+        size_t end = token.find_last_not_of(" \t\r\n");
+        if (start != std::string::npos && end != std::string::npos) {
+            token = token.substr(start, end - start + 1);
+        }
+
+        if (!token.empty() && TelegramApi::isValidTokenFormat(token)) {
+            tokens.push_back(token);
+        }
+    }
+    file.close();
+
+    if (tokens.empty()) {
+        Terminal::warning("No valid tokens found in file");
+        return;
+    }
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE);
+    std::cout << "Found " << Terminal::fg(Terminal::Color::BRIGHT_YELLOW);
+    std::cout << tokens.size() << Terminal::fg(Terminal::Color::WHITE);
+    std::cout << " token(s) to validate\n" << Terminal::reset() << "\n";
+
+    // Validate each token
+    int validCount = 0;
+    int invalidCount = 0;
+
+    for (size_t i = 0; i < tokens.size(); i++) {
+        const std::string& token = tokens[i];
+
+        // Create API client and validate
+        TelegramApi api(token);
+        BotInfo botInfo;
+        bool valid = api.getMe(botInfo);
+
+        // Print result on one line
+        std::cout << "[" << (i + 1) << "/" << tokens.size() << "] ";
+
+        // Show abbreviated token
+        std::string shortToken = token.substr(0, 15) + "...";
+        std::cout << Terminal::fg(Terminal::Color::BRIGHT_BLACK) << shortToken << Terminal::reset() << " - ";
+
+        if (valid) {
+            validCount++;
+            std::cout << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << Terminal::bold();
+            if (Terminal::supportsUTF8()) {
+                std::cout << Terminal::ICON_SUCCESS << " ";
+            }
+            std::cout << "VALID" << Terminal::reset();
+            std::cout << Terminal::fg(Terminal::Color::WHITE) << " - ";
+            std::cout << Terminal::fg(Terminal::Color::BRIGHT_CYAN) << botInfo.firstName;
+            std::cout << Terminal::fg(Terminal::Color::CYAN) << " (@" << botInfo.username << ")";
+            std::cout << Terminal::reset() << "\n";
+        } else {
+            invalidCount++;
+            std::cout << Terminal::fg(Terminal::Color::BRIGHT_RED) << Terminal::bold();
+            if (Terminal::supportsUTF8()) {
+                std::cout << Terminal::ICON_ERROR << " ";
+            }
+            std::cout << "INVALID" << Terminal::reset();
+            std::cout << Terminal::fg(Terminal::Color::RED) << " - " << api.getLastError();
+            std::cout << Terminal::reset() << "\n";
+        }
+    }
+
+    // Summary
+    std::cout << "\n" << Terminal::fg(Terminal::Color::BRIGHT_YELLOW) << Terminal::bold();
+    std::cout << "Summary:" << Terminal::reset() << "\n";
+    std::cout << "──────────────────────────────────────────────────\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Total tokens:    ";
+    std::cout << Terminal::fg(Terminal::Color::BRIGHT_WHITE) << tokens.size() << "\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Valid tokens:    ";
+    std::cout << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << validCount << "\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Invalid tokens:  ";
+    std::cout << Terminal::fg(Terminal::Color::BRIGHT_RED) << invalidCount << "\n";
+
+    std::cout << Terminal::reset();
+}
+
+/**
+ * Read and display bot administrator rights
+ */
+void readBotRights(const std::string& token) {
+    std::cout << Terminal::fg(Terminal::Color::BRIGHT_CYAN) << Terminal::bold();
+    if (Terminal::supportsUTF8()) {
+        std::cout << Terminal::ICON_KEY << " ";
+    }
+    std::cout << "Bot Administrator Rights" << Terminal::reset() << "\n";
+    std::cout << "──────────────────────────────────────────────────\n\n";
+
+    // Create API client
+    TelegramApi api(token);
+    BotAdminRights groupRights, channelRights;
+
+    std::cout << Terminal::fg(Terminal::Color::CYAN);
+    std::cout << "Fetching default administrator rights...\n";
+    std::cout << Terminal::reset();
+
+    bool success = api.getMyDefaultAdministratorRights(groupRights, channelRights);
+
+    std::cout << "\n";
+
+    if (!success) {
+        Terminal::error("Failed to retrieve administrator rights");
+        std::cout << "\n" << Terminal::fg(Terminal::Color::RED);
+        std::cout << "Error: " << Terminal::fg(Terminal::Color::BRIGHT_RED);
+        std::cout << api.getLastError() << "\n";
+        std::cout << Terminal::reset();
+        return;
+    }
+
+    // Display group/supergroup rights
+    std::cout << Terminal::fg(Terminal::Color::BRIGHT_YELLOW) << Terminal::bold();
+    std::cout << "Groups & Supergroups:" << Terminal::reset() << "\n";
+    std::cout << "──────────────────────────────────────────────────\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Anonymous Admin:        " << (groupRights.isAnonymous ?
+        Terminal::colorize("Yes", Terminal::Color::BRIGHT_GREEN) :
+        Terminal::colorize("No", Terminal::Color::BRIGHT_RED)) << "\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Manage Chat:            " << (groupRights.canManageChat ?
+        Terminal::colorize("Yes", Terminal::Color::BRIGHT_GREEN) :
+        Terminal::colorize("No", Terminal::Color::BRIGHT_RED)) << "\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Delete Messages:        " << (groupRights.canDeleteMessages ?
+        Terminal::colorize("Yes", Terminal::Color::BRIGHT_GREEN) :
+        Terminal::colorize("No", Terminal::Color::BRIGHT_RED)) << "\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Manage Video Chats:     " << (groupRights.canManageVideoChats ?
+        Terminal::colorize("Yes", Terminal::Color::BRIGHT_GREEN) :
+        Terminal::colorize("No", Terminal::Color::BRIGHT_RED)) << "\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Restrict Members:       " << (groupRights.canRestrictMembers ?
+        Terminal::colorize("Yes", Terminal::Color::BRIGHT_GREEN) :
+        Terminal::colorize("No", Terminal::Color::BRIGHT_RED)) << "\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Promote Members:        " << (groupRights.canPromoteMembers ?
+        Terminal::colorize("Yes", Terminal::Color::BRIGHT_GREEN) :
+        Terminal::colorize("No", Terminal::Color::BRIGHT_RED)) << "\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Change Info:            " << (groupRights.canChangeInfo ?
+        Terminal::colorize("Yes", Terminal::Color::BRIGHT_GREEN) :
+        Terminal::colorize("No", Terminal::Color::BRIGHT_RED)) << "\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Invite Users:           " << (groupRights.canInviteUsers ?
+        Terminal::colorize("Yes", Terminal::Color::BRIGHT_GREEN) :
+        Terminal::colorize("No", Terminal::Color::BRIGHT_RED)) << "\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Pin Messages:           " << (groupRights.canPinMessages ?
+        Terminal::colorize("Yes", Terminal::Color::BRIGHT_GREEN) :
+        Terminal::colorize("No", Terminal::Color::BRIGHT_RED)) << "\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Manage Topics:          " << (groupRights.canManageTopics ?
+        Terminal::colorize("Yes", Terminal::Color::BRIGHT_GREEN) :
+        Terminal::colorize("No", Terminal::Color::BRIGHT_RED)) << "\n";
+
+    // Display channel rights
+    std::cout << "\n" << Terminal::fg(Terminal::Color::BRIGHT_YELLOW) << Terminal::bold();
+    std::cout << "Channels:" << Terminal::reset() << "\n";
+    std::cout << "──────────────────────────────────────────────────\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Anonymous Admin:        " << (channelRights.isAnonymous ?
+        Terminal::colorize("Yes", Terminal::Color::BRIGHT_GREEN) :
+        Terminal::colorize("No", Terminal::Color::BRIGHT_RED)) << "\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Manage Chat:            " << (channelRights.canManageChat ?
+        Terminal::colorize("Yes", Terminal::Color::BRIGHT_GREEN) :
+        Terminal::colorize("No", Terminal::Color::BRIGHT_RED)) << "\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Delete Messages:        " << (channelRights.canDeleteMessages ?
+        Terminal::colorize("Yes", Terminal::Color::BRIGHT_GREEN) :
+        Terminal::colorize("No", Terminal::Color::BRIGHT_RED)) << "\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Manage Video Chats:     " << (channelRights.canManageVideoChats ?
+        Terminal::colorize("Yes", Terminal::Color::BRIGHT_GREEN) :
+        Terminal::colorize("No", Terminal::Color::BRIGHT_RED)) << "\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Restrict Members:       " << (channelRights.canRestrictMembers ?
+        Terminal::colorize("Yes", Terminal::Color::BRIGHT_GREEN) :
+        Terminal::colorize("No", Terminal::Color::BRIGHT_RED)) << "\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Promote Members:        " << (channelRights.canPromoteMembers ?
+        Terminal::colorize("Yes", Terminal::Color::BRIGHT_GREEN) :
+        Terminal::colorize("No", Terminal::Color::BRIGHT_RED)) << "\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Change Info:            " << (channelRights.canChangeInfo ?
+        Terminal::colorize("Yes", Terminal::Color::BRIGHT_GREEN) :
+        Terminal::colorize("No", Terminal::Color::BRIGHT_RED)) << "\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Invite Users:           " << (channelRights.canInviteUsers ?
+        Terminal::colorize("Yes", Terminal::Color::BRIGHT_GREEN) :
+        Terminal::colorize("No", Terminal::Color::BRIGHT_RED)) << "\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Post Messages:          " << (channelRights.canPostMessages ?
+        Terminal::colorize("Yes", Terminal::Color::BRIGHT_GREEN) :
+        Terminal::colorize("No", Terminal::Color::BRIGHT_RED)) << "\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Edit Messages:          " << (channelRights.canEditMessages ?
+        Terminal::colorize("Yes", Terminal::Color::BRIGHT_GREEN) :
+        Terminal::colorize("No", Terminal::Color::BRIGHT_RED)) << "\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Pin Messages:           " << (channelRights.canPinMessages ?
+        Terminal::colorize("Yes", Terminal::Color::BRIGHT_GREEN) :
+        Terminal::colorize("No", Terminal::Color::BRIGHT_RED)) << "\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Manage Topics:          " << (channelRights.canManageTopics ?
+        Terminal::colorize("Yes", Terminal::Color::BRIGHT_GREEN) :
+        Terminal::colorize("No", Terminal::Color::BRIGHT_RED)) << "\n";
+
+    std::cout << Terminal::reset();
+}
+
+/**
+ * Get webhook information
+ */
+void getWebhookInfo(const std::string& token) {
+    std::cout << Terminal::fg(Terminal::Color::BRIGHT_CYAN) << Terminal::bold();
+    std::cout << " Webhook Information" << Terminal::reset() << "\n";
+    std::cout << "──────────────────────────────────────────────────\n\n";
+
+    std::cout << Terminal::fg(Terminal::Color::CYAN) << "Fetching webhook information...\n" << Terminal::reset();
+
+    TelegramApi api(token);
+    WebhookInfo webhookInfo;
+    bool success = api.getWebhookInfo(webhookInfo);
+
+    if (!success) {
+        std::cout << "\n";
+        Terminal::error("Failed to retrieve webhook information");
+        std::cout << "\n" << Terminal::fg(Terminal::Color::RED) << "Error: " << Terminal::fg(Terminal::Color::BRIGHT_RED);
+        std::cout << api.getLastError() << Terminal::reset() << "\n";
+        return;
+    }
+
+    std::cout << "\n";
+    Terminal::success("Successfully retrieved webhook information");
+
+    std::cout << "\n" << Terminal::fg(Terminal::Color::BRIGHT_YELLOW) << Terminal::bold();
+    std::cout << "Webhook Status:" << Terminal::reset() << "\n";
+    std::cout << "──────────────────────────────────────────────────\n";
+
+    if (webhookInfo.url.empty()) {
+        std::cout << Terminal::fg(Terminal::Color::YELLOW) << "No webhook is currently set\n";
+        std::cout << Terminal::fg(Terminal::Color::WHITE) << "Use " << Terminal::fg(Terminal::Color::BRIGHT_GREEN);
+        std::cout << "--webhook-set <URL>" << Terminal::fg(Terminal::Color::WHITE);
+        std::cout << " to configure a webhook\n" << Terminal::reset();
+    } else {
+        std::cout << Terminal::fg(Terminal::Color::WHITE) << "URL:                    " << Terminal::fg(Terminal::Color::BRIGHT_CYAN);
+        std::cout << webhookInfo.url << "\n" << Terminal::reset();
+
+        std::cout << Terminal::fg(Terminal::Color::WHITE) << "Custom Certificate:     " << (webhookInfo.hasCustomCertificate ?
+            Terminal::colorize("Yes", Terminal::Color::BRIGHT_GREEN) :
+            Terminal::colorize("No", Terminal::Color::BRIGHT_RED)) << "\n";
+
+        std::cout << Terminal::fg(Terminal::Color::WHITE) << "Pending Updates:        " << Terminal::fg(Terminal::Color::BRIGHT_WHITE);
+        std::cout << webhookInfo.pendingUpdateCount << "\n" << Terminal::reset();
+
+        if (!webhookInfo.ipAddress.empty()) {
+            std::cout << Terminal::fg(Terminal::Color::WHITE) << "IP Address:             " << Terminal::fg(Terminal::Color::BRIGHT_WHITE);
+            std::cout << webhookInfo.ipAddress << "\n" << Terminal::reset();
+        }
+
+        if (webhookInfo.maxConnections > 0) {
+            std::cout << Terminal::fg(Terminal::Color::WHITE) << "Max Connections:        " << Terminal::fg(Terminal::Color::BRIGHT_WHITE);
+            std::cout << webhookInfo.maxConnections << "\n" << Terminal::reset();
+        }
+
+        if (webhookInfo.lastErrorDate > 0) {
+            std::cout << "\n" << Terminal::fg(Terminal::Color::BRIGHT_RED) << Terminal::bold();
+            std::cout << "Last Error:" << Terminal::reset() << "\n";
+            std::cout << Terminal::fg(Terminal::Color::WHITE) << "Date:                   " << Terminal::fg(Terminal::Color::BRIGHT_WHITE);
+            time_t errorTime = static_cast<time_t>(webhookInfo.lastErrorDate);
+            struct tm* timeinfo = localtime(&errorTime);
+            char dateStr[20];
+            strftime(dateStr, sizeof(dateStr), "%Y-%m-%d %H:%M:%S", timeinfo);
+            std::cout << dateStr << "\n" << Terminal::reset();
+
+            if (!webhookInfo.lastErrorMessage.empty()) {
+                std::cout << Terminal::fg(Terminal::Color::WHITE) << "Message:                " << Terminal::fg(Terminal::Color::BRIGHT_RED);
+                std::cout << webhookInfo.lastErrorMessage << "\n" << Terminal::reset();
+            }
+        }
+    }
+
+    std::cout << Terminal::reset();
+}
+
+/**
+ * Set webhook URL
+ */
+void setWebhook(const std::string& token, const std::string& url) {
+    std::cout << Terminal::fg(Terminal::Color::BRIGHT_CYAN) << Terminal::bold();
+    std::cout << " Set Webhook" << Terminal::reset() << "\n";
+    std::cout << "──────────────────────────────────────────────────\n\n";
+
+    std::cout << Terminal::fg(Terminal::Color::CYAN) << "Setting webhook URL...\n" << Terminal::reset();
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "URL: " << Terminal::fg(Terminal::Color::BRIGHT_CYAN);
+    std::cout << url << "\n\n" << Terminal::reset();
+
+    TelegramApi api(token);
+    bool success = api.setWebhook(url);
+
+    if (!success) {
+        Terminal::error("Failed to set webhook");
+        std::cout << "\n" << Terminal::fg(Terminal::Color::RED) << "Error: " << Terminal::fg(Terminal::Color::BRIGHT_RED);
+        std::cout << api.getLastError() << Terminal::reset() << "\n";
+        return;
+    }
+
+    Terminal::success("Webhook URL has been set successfully");
+
+    std::cout << "\n" << Terminal::fg(Terminal::Color::YELLOW);
+    std::cout << "Note: Make sure your webhook URL:\n";
+    std::cout << "  - Uses HTTPS (required by Telegram)\n";
+    std::cout << "  - Has a valid SSL certificate\n";
+    std::cout << "  - Is publicly accessible\n";
+    std::cout << "  - Responds with HTTP 200 OK to POST requests\n";
+    std::cout << Terminal::reset();
+}
+
+/**
+ * Delete webhook
+ */
+void deleteWebhook(const std::string& token) {
+    std::cout << Terminal::fg(Terminal::Color::BRIGHT_CYAN) << Terminal::bold();
+    std::cout << " Delete Webhook" << Terminal::reset() << "\n";
+    std::cout << "──────────────────────────────────────────────────\n\n";
+
+    std::cout << Terminal::fg(Terminal::Color::CYAN) << "Deleting webhook...\n" << Terminal::reset();
+
+    TelegramApi api(token);
+    bool success = api.deleteWebhook();
+
+    if (!success) {
+        std::cout << "\n";
+        Terminal::error("Failed to delete webhook");
+        std::cout << "\n" << Terminal::fg(Terminal::Color::RED) << "Error: " << Terminal::fg(Terminal::Color::BRIGHT_RED);
+        std::cout << api.getLastError() << Terminal::reset() << "\n";
+        return;
+    }
+
+    std::cout << "\n";
+    Terminal::success("Webhook has been deleted successfully");
+
+    std::cout << "\n" << Terminal::fg(Terminal::Color::WHITE);
+    std::cout << "Your bot will no longer receive updates via webhook.\n";
+    std::cout << "You can now use long polling (getUpdates) instead.\n";
+    std::cout << Terminal::reset();
+}
+
+/**
  * Main entry point
  */
 int main(int argc, char* argv[]) {
@@ -432,6 +840,185 @@ int main(int argc, char* argv[]) {
     // Parse command line arguments
     if (argc < 2) {
         showHelp();
+        return 0;
+    }
+
+    // Check for --bulk-validate flag
+    bool shouldBulkValidate = false;
+    std::string bulkFile = "";
+    for (int i = 1; i < argc; i++) {
+        std::string arg = argv[i];
+        if (arg == "--bulk-validate") {
+            shouldBulkValidate = true;
+            // Check if file path is provided
+            if (i + 1 < argc && argv[i + 1][0] != '-') {
+                bulkFile = argv[i + 1];
+            }
+            break;
+        }
+    }
+
+    // Handle bulk validation
+    if (shouldBulkValidate) {
+        // Use tokens-seen file if no file specified
+        if (bulkFile.empty()) {
+            bulkFile = config.getTokensSeenFile();
+        }
+
+        bulkValidateTokens(bulkFile);
+        return 0;
+    }
+
+    // Check for --read-botrights flag
+    bool shouldReadRights = false;
+    for (int i = 1; i < argc; i++) {
+        std::string arg = argv[i];
+        if (arg == "--read-botrights") {
+            shouldReadRights = true;
+            break;
+        }
+    }
+
+    // Handle read bot rights
+    if (shouldReadRights) {
+        std::string token = getToken(argc, argv);
+
+        if (token.empty()) {
+            Terminal::error("No bot token provided");
+            std::cout << "\n" << Terminal::fg(Terminal::Color::YELLOW);
+            std::cout << "Please provide a token using one of these methods:\n";
+            std::cout << "  1. Command line: " << Terminal::fg(Terminal::Color::BRIGHT_GREEN);
+            std::cout << "--token <TOKEN>\n";
+            std::cout << Terminal::fg(Terminal::Color::YELLOW);
+            std::cout << "  2. Environment:  " << Terminal::fg(Terminal::Color::BRIGHT_MAGENTA);
+            std::cout << "export TGDIGGER_TOKEN=<TOKEN>\n";
+            std::cout << Terminal::fg(Terminal::Color::YELLOW);
+            std::cout << "  3. Config file:  " << Terminal::fg(Terminal::Color::BRIGHT_CYAN);
+            std::cout << "~/.telegramdigger/settings.conf\n";
+            std::cout << Terminal::reset();
+            return 1;
+        }
+
+        readBotRights(token);
+        return 0;
+    }
+
+    // Check for --webhook-get or --webhook-info flag
+    bool shouldGetWebhook = false;
+    for (int i = 1; i < argc; i++) {
+        std::string arg = argv[i];
+        if (arg == "--webhook-get" || arg == "--webhook-info") {
+            shouldGetWebhook = true;
+            break;
+        }
+    }
+
+    // Handle get webhook info
+    if (shouldGetWebhook) {
+        std::string token = getToken(argc, argv);
+
+        if (token.empty()) {
+            Terminal::error("No bot token provided");
+            std::cout << "\n" << Terminal::fg(Terminal::Color::YELLOW);
+            std::cout << "Please provide a token using one of these methods:\n";
+            std::cout << "  1. Command line: " << Terminal::fg(Terminal::Color::BRIGHT_GREEN);
+            std::cout << "--token <TOKEN>\n";
+            std::cout << Terminal::fg(Terminal::Color::YELLOW);
+            std::cout << "  2. Environment:  " << Terminal::fg(Terminal::Color::BRIGHT_MAGENTA);
+            std::cout << "export TGDIGGER_TOKEN=<TOKEN>\n";
+            std::cout << Terminal::fg(Terminal::Color::YELLOW);
+            std::cout << "  3. Config file:  " << Terminal::fg(Terminal::Color::BRIGHT_CYAN);
+            std::cout << "~/.telegramdigger/settings.conf\n";
+            std::cout << Terminal::reset();
+            return 1;
+        }
+
+        getWebhookInfo(token);
+        return 0;
+    }
+
+    // Check for --webhook-set flag
+    bool shouldSetWebhook = false;
+    std::string webhookUrl = "";
+    for (int i = 1; i < argc; i++) {
+        std::string arg = argv[i];
+        if (arg == "--webhook-set") {
+            shouldSetWebhook = true;
+            // Check if URL is provided
+            if (i + 1 < argc && argv[i + 1][0] != '-') {
+                webhookUrl = argv[i + 1];
+            }
+            break;
+        }
+    }
+
+    // Handle set webhook
+    if (shouldSetWebhook) {
+        if (webhookUrl.empty()) {
+            Terminal::error("No webhook URL provided");
+            std::cout << "\n" << Terminal::fg(Terminal::Color::YELLOW);
+            std::cout << "Usage: " << Terminal::fg(Terminal::Color::BRIGHT_GREEN);
+            std::cout << "--webhook-set <URL>\n";
+            std::cout << Terminal::fg(Terminal::Color::YELLOW);
+            std::cout << "Example: " << Terminal::fg(Terminal::Color::BRIGHT_GREEN);
+            std::cout << "--webhook-set https://example.com/webhook\n";
+            std::cout << Terminal::reset();
+            return 1;
+        }
+
+        std::string token = getToken(argc, argv);
+
+        if (token.empty()) {
+            Terminal::error("No bot token provided");
+            std::cout << "\n" << Terminal::fg(Terminal::Color::YELLOW);
+            std::cout << "Please provide a token using one of these methods:\n";
+            std::cout << "  1. Command line: " << Terminal::fg(Terminal::Color::BRIGHT_GREEN);
+            std::cout << "--token <TOKEN>\n";
+            std::cout << Terminal::fg(Terminal::Color::YELLOW);
+            std::cout << "  2. Environment:  " << Terminal::fg(Terminal::Color::BRIGHT_MAGENTA);
+            std::cout << "export TGDIGGER_TOKEN=<TOKEN>\n";
+            std::cout << Terminal::fg(Terminal::Color::YELLOW);
+            std::cout << "  3. Config file:  " << Terminal::fg(Terminal::Color::BRIGHT_CYAN);
+            std::cout << "~/.telegramdigger/settings.conf\n";
+            std::cout << Terminal::reset();
+            return 1;
+        }
+
+        setWebhook(token, webhookUrl);
+        return 0;
+    }
+
+    // Check for --webhook-delete flag
+    bool shouldDeleteWebhook = false;
+    for (int i = 1; i < argc; i++) {
+        std::string arg = argv[i];
+        if (arg == "--webhook-delete") {
+            shouldDeleteWebhook = true;
+            break;
+        }
+    }
+
+    // Handle delete webhook
+    if (shouldDeleteWebhook) {
+        std::string token = getToken(argc, argv);
+
+        if (token.empty()) {
+            Terminal::error("No bot token provided");
+            std::cout << "\n" << Terminal::fg(Terminal::Color::YELLOW);
+            std::cout << "Please provide a token using one of these methods:\n";
+            std::cout << "  1. Command line: " << Terminal::fg(Terminal::Color::BRIGHT_GREEN);
+            std::cout << "--token <TOKEN>\n";
+            std::cout << Terminal::fg(Terminal::Color::YELLOW);
+            std::cout << "  2. Environment:  " << Terminal::fg(Terminal::Color::BRIGHT_MAGENTA);
+            std::cout << "export TGDIGGER_TOKEN=<TOKEN>\n";
+            std::cout << Terminal::fg(Terminal::Color::YELLOW);
+            std::cout << "  3. Config file:  " << Terminal::fg(Terminal::Color::BRIGHT_CYAN);
+            std::cout << "~/.telegramdigger/settings.conf\n";
+            std::cout << Terminal::reset();
+            return 1;
+        }
+
+        deleteWebhook(token);
         return 0;
     }
 
