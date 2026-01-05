@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make:*)",
+      "Bash(./bin/telegramdigger:*)",
+      "Bash(dpkg-deb:*)",
+      "Bash(TGDIGGER_TOKEN=\"123456789:ABCdefGHIjklMNOpqrsTUVwxyz\" ./bin/telegramdigger --validate)"
+    ]
+  }
+}
