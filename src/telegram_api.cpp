@@ -383,4 +383,438 @@ bool TelegramApi::deleteWebhook() {
     return lastResponse_.ok;
 }
 
+bool TelegramApi::getMyCommands(std::vector<BotCommand>& commands) {
+    std::string url = buildUrl("getMyCommands");
+    HttpResponse response = httpClient_->get(url);
+
+    if (!response.success) {
+        lastResponse_.ok = false;
+        lastResponse_.description = "HTTP request failed: " + response.error;
+        return false;
+    }
+
+    parseJsonResponse(response.body, lastResponse_);
+
+    if (!lastResponse_.ok) {
+        return false;
+    }
+
+    // Extract commands from result array
+    size_t resultPos = response.body.find("\"result\":");
+    if (resultPos == std::string::npos) {
+        return true; // Empty commands list
+    }
+
+    std::string resultJson = response.body.substr(resultPos);
+
+    // Find array start
+    size_t arrayStart = resultJson.find('[');
+    if (arrayStart == std::string::npos) {
+        return true; // Empty array
+    }
+
+    // Parse commands manually
+    size_t pos = arrayStart + 1;
+    while (pos < resultJson.length()) {
+        // Find next object
+        size_t objStart = resultJson.find('{', pos);
+        if (objStart == std::string::npos) break;
+
+        size_t objEnd = resultJson.find('}', objStart);
+        if (objEnd == std::string::npos) break;
+
+        std::string objJson = resultJson.substr(objStart, objEnd - objStart + 1);
+
+        BotCommand cmd;
+        cmd.command = extractJsonString(objJson, "command");
+        cmd.description = extractJsonString(objJson, "description");
+
+        if (!cmd.command.empty()) {
+            commands.push_back(cmd);
+        }
+
+        pos = objEnd + 1;
+
+        // Check if we reached array end
+        size_t nextComma = resultJson.find(',', pos);
+        size_t arrayEnd = resultJson.find(']', pos);
+        if (arrayEnd != std::string::npos && (nextComma == std::string::npos || arrayEnd < nextComma)) {
+            break;
+        }
+    }
+
+    return true;
+}
+
+bool TelegramApi::getMyDescription(std::string& description) {
+    std::string url = buildUrl("getMyDescription");
+    HttpResponse response = httpClient_->get(url);
+
+    if (!response.success) {
+        lastResponse_.ok = false;
+        lastResponse_.description = "HTTP request failed: " + response.error;
+        return false;
+    }
+
+    parseJsonResponse(response.body, lastResponse_);
+
+    if (!lastResponse_.ok) {
+        return false;
+    }
+
+    size_t resultPos = response.body.find("\"result\":");
+    if (resultPos == std::string::npos) {
+        return true;
+    }
+
+    std::string resultJson = response.body.substr(resultPos);
+    description = extractJsonString(resultJson, "description");
+
+    return true;
+}
+
+bool TelegramApi::getMyName(std::string& name) {
+    std::string url = buildUrl("getMyName");
+    HttpResponse response = httpClient_->get(url);
+
+    if (!response.success) {
+        lastResponse_.ok = false;
+        lastResponse_.description = "HTTP request failed: " + response.error;
+        return false;
+    }
+
+    parseJsonResponse(response.body, lastResponse_);
+
+    if (!lastResponse_.ok) {
+        return false;
+    }
+
+    size_t resultPos = response.body.find("\"result\":");
+    if (resultPos == std::string::npos) {
+        return true;
+    }
+
+    std::string resultJson = response.body.substr(resultPos);
+    name = extractJsonString(resultJson, "name");
+
+    return true;
+}
+
+bool TelegramApi::getMyShortDescription(std::string& shortDesc) {
+    std::string url = buildUrl("getMyShortDescription");
+    HttpResponse response = httpClient_->get(url);
+
+    if (!response.success) {
+        lastResponse_.ok = false;
+        lastResponse_.description = "HTTP request failed: " + response.error;
+        return false;
+    }
+
+    parseJsonResponse(response.body, lastResponse_);
+
+    if (!lastResponse_.ok) {
+        return false;
+    }
+
+    size_t resultPos = response.body.find("\"result\":");
+    if (resultPos == std::string::npos) {
+        return true;
+    }
+
+    std::string resultJson = response.body.substr(resultPos);
+    shortDesc = extractJsonString(resultJson, "short_description");
+
+    return true;
+}
+
+bool TelegramApi::getUpdates(std::vector<Update>& updates, int limit) {
+    std::ostringstream urlStream;
+    urlStream << buildUrl("getUpdates");
+    urlStream << "?limit=" << limit << "&timeout=0";
+
+    std::string url = urlStream.str();
+    HttpResponse response = httpClient_->get(url);
+
+    if (!response.success) {
+        lastResponse_.ok = false;
+        lastResponse_.description = "HTTP request failed: " + response.error;
+        return false;
+    }
+
+    parseJsonResponse(response.body, lastResponse_);
+
+    if (!lastResponse_.ok) {
+        return false;
+    }
+
+    // Extract updates from result array
+    size_t resultPos = response.body.find("\"result\":");
+    if (resultPos == std::string::npos) {
+        return true; // Empty updates
+    }
+
+    std::string resultJson = response.body.substr(resultPos);
+
+    size_t arrayStart = resultJson.find('[');
+    if (arrayStart == std::string::npos) {
+        return true; // Empty array
+    }
+
+    // Parse updates
+    size_t pos = arrayStart + 1;
+    while (pos < resultJson.length()) {
+        size_t objStart = resultJson.find('{', pos);
+        if (objStart == std::string::npos) break;
+
+        // Find matching closing brace
+        int braceCount = 1;
+        size_t objEnd = objStart + 1;
+        while (objEnd < resultJson.length() && braceCount > 0) {
+            if (resultJson[objEnd] == '{') braceCount++;
+            else if (resultJson[objEnd] == '}') braceCount--;
+            objEnd++;
+        }
+
+        if (braceCount != 0) break;
+
+        std::string objJson = resultJson.substr(objStart, objEnd - objStart);
+
+        Update update;
+        update.updateId = extractJsonInt(objJson, "update_id");
+
+        // Determine update type and extract relevant fields
+        if (objJson.find("\"message\":") != std::string::npos) {
+            update.type = "message";
+            size_t msgPos = objJson.find("\"message\":");
+            std::string msgJson = objJson.substr(msgPos);
+
+            // Extract message fields
+            update.timestamp = extractJsonInt(msgJson, "date");
+            update.text = extractJsonString(msgJson, "text");
+
+            // Extract from user
+            size_t fromPos = msgJson.find("\"from\":");
+            if (fromPos != std::string::npos) {
+                std::string fromJson = msgJson.substr(fromPos);
+                update.userId = extractJsonInt(fromJson, "id");
+                update.username = extractJsonString(fromJson, "username");
+                update.firstName = extractJsonString(fromJson, "first_name");
+            }
+
+            // Extract chat info
+            size_t chatPos = msgJson.find("\"chat\":");
+            if (chatPos != std::string::npos) {
+                std::string chatJson = msgJson.substr(chatPos);
+                update.chatId = extractJsonInt(chatJson, "id");
+                update.chatType = extractJsonString(chatJson, "type");
+                update.chatTitle = extractJsonString(chatJson, "title");
+            }
+        } else if (objJson.find("\"edited_message\":") != std::string::npos) {
+            update.type = "edited_message";
+            size_t msgPos = objJson.find("\"edited_message\":");
+            std::string msgJson = objJson.substr(msgPos);
+
+            update.timestamp = extractJsonInt(msgJson, "date");
+            update.text = extractJsonString(msgJson, "text");
+
+            size_t fromPos = msgJson.find("\"from\":");
+            if (fromPos != std::string::npos) {
+                std::string fromJson = msgJson.substr(fromPos);
+                update.userId = extractJsonInt(fromJson, "id");
+                update.username = extractJsonString(fromJson, "username");
+                update.firstName = extractJsonString(fromJson, "first_name");
+            }
+
+            size_t chatPos = msgJson.find("\"chat\":");
+            if (chatPos != std::string::npos) {
+                std::string chatJson = msgJson.substr(chatPos);
+                update.chatId = extractJsonInt(chatJson, "id");
+                update.chatType = extractJsonString(chatJson, "type");
+                update.chatTitle = extractJsonString(chatJson, "title");
+            }
+        } else if (objJson.find("\"channel_post\":") != std::string::npos) {
+            update.type = "channel_post";
+            size_t msgPos = objJson.find("\"channel_post\":");
+            std::string msgJson = objJson.substr(msgPos);
+
+            update.timestamp = extractJsonInt(msgJson, "date");
+            update.text = extractJsonString(msgJson, "text");
+
+            size_t chatPos = msgJson.find("\"chat\":");
+            if (chatPos != std::string::npos) {
+                std::string chatJson = msgJson.substr(chatPos);
+                update.chatId = extractJsonInt(chatJson, "id");
+                update.chatType = extractJsonString(chatJson, "type");
+                update.chatTitle = extractJsonString(chatJson, "title");
+            }
+        } else if (objJson.find("\"callback_query\":") != std::string::npos) {
+            update.type = "callback_query";
+        } else {
+            update.type = "other";
+        }
+
+        updates.push_back(update);
+
+        pos = objEnd;
+
+        size_t nextComma = resultJson.find(',', pos);
+        size_t arrayEnd = resultJson.find(']', pos);
+        if (arrayEnd != std::string::npos && (nextComma == std::string::npos || arrayEnd < nextComma)) {
+            break;
+        }
+    }
+
+    return true;
+}
+
+bool TelegramApi::getChat(long long chatId, ChatInfo& chatInfo) {
+    std::ostringstream urlStream;
+    urlStream << buildUrl("getChat");
+    urlStream << "?chat_id=" << chatId;
+
+    std::string url = urlStream.str();
+    HttpResponse response = httpClient_->get(url);
+
+    if (!response.success) {
+        lastResponse_.ok = false;
+        lastResponse_.description = "HTTP request failed: " + response.error;
+        return false;
+    }
+
+    parseJsonResponse(response.body, lastResponse_);
+
+    if (!lastResponse_.ok) {
+        return false;
+    }
+
+    size_t resultPos = response.body.find("\"result\":");
+    if (resultPos == std::string::npos) {
+        return false;
+    }
+
+    std::string resultJson = response.body.substr(resultPos);
+
+    chatInfo.chatId = extractJsonInt(resultJson, "id");
+    chatInfo.type = extractJsonString(resultJson, "type");
+    chatInfo.title = extractJsonString(resultJson, "title");
+    chatInfo.username = extractJsonString(resultJson, "username");
+    chatInfo.description = extractJsonString(resultJson, "description");
+    chatInfo.hasProtectedContent = extractJsonBool(resultJson, "has_protected_content");
+
+    return true;
+}
+
+bool TelegramApi::getChatAdministrators(long long chatId, std::vector<ChatAdmin>& admins) {
+    std::ostringstream urlStream;
+    urlStream << buildUrl("getChatAdministrators");
+    urlStream << "?chat_id=" << chatId;
+
+    std::string url = urlStream.str();
+    HttpResponse response = httpClient_->get(url);
+
+    if (!response.success) {
+        lastResponse_.ok = false;
+        lastResponse_.description = "HTTP request failed: " + response.error;
+        return false;
+    }
+
+    parseJsonResponse(response.body, lastResponse_);
+
+    if (!lastResponse_.ok) {
+        return false;
+    }
+
+    size_t resultPos = response.body.find("\"result\":");
+    if (resultPos == std::string::npos) {
+        return true; // Empty admins list
+    }
+
+    std::string resultJson = response.body.substr(resultPos);
+
+    size_t arrayStart = resultJson.find('[');
+    if (arrayStart == std::string::npos) {
+        return true; // Empty array
+    }
+
+    // Parse admins
+    size_t pos = arrayStart + 1;
+    while (pos < resultJson.length()) {
+        size_t objStart = resultJson.find('{', pos);
+        if (objStart == std::string::npos) break;
+
+        int braceCount = 1;
+        size_t objEnd = objStart + 1;
+        while (objEnd < resultJson.length() && braceCount > 0) {
+            if (resultJson[objEnd] == '{') braceCount++;
+            else if (resultJson[objEnd] == '}') braceCount--;
+            objEnd++;
+        }
+
+        if (braceCount != 0) break;
+
+        std::string objJson = resultJson.substr(objStart, objEnd - objStart);
+
+        ChatAdmin admin;
+        admin.status = extractJsonString(objJson, "status");
+
+        // Extract user info
+        size_t userPos = objJson.find("\"user\":");
+        if (userPos != std::string::npos) {
+            std::string userJson = objJson.substr(userPos);
+            admin.userId = extractJsonInt(userJson, "id");
+            admin.username = extractJsonString(userJson, "username");
+            admin.firstName = extractJsonString(userJson, "first_name");
+        }
+
+        admin.isAnonymous = extractJsonBool(objJson, "is_anonymous");
+        admin.customTitle = extractJsonString(objJson, "custom_title");
+
+        if (admin.userId != 0) {
+            admins.push_back(admin);
+        }
+
+        pos = objEnd;
+
+        size_t nextComma = resultJson.find(',', pos);
+        size_t arrayEnd = resultJson.find(']', pos);
+        if (arrayEnd != std::string::npos && (nextComma == std::string::npos || arrayEnd < nextComma)) {
+            break;
+        }
+    }
+
+    return true;
+}
+
+bool TelegramApi::getChatMemberCount(long long chatId, int& count) {
+    std::ostringstream urlStream;
+    urlStream << buildUrl("getChatMemberCount");
+    urlStream << "?chat_id=" << chatId;
+
+    std::string url = urlStream.str();
+    HttpResponse response = httpClient_->get(url);
+
+    if (!response.success) {
+        lastResponse_.ok = false;
+        lastResponse_.description = "HTTP request failed: " + response.error;
+        return false;
+    }
+
+    parseJsonResponse(response.body, lastResponse_);
+
+    if (!lastResponse_.ok) {
+        return false;
+    }
+
+    // Result is directly an integer
+    size_t resultPos = response.body.find("\"result\":");
+    if (resultPos == std::string::npos) {
+        return false;
+    }
+
+    std::string resultJson = response.body.substr(resultPos);
+    count = static_cast<int>(extractJsonInt(resultJson, "result"));
+
+    return true;
+}
+
 } // namespace TelegramDigger

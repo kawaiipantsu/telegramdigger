@@ -4,8 +4,12 @@
 #include "telegram_api.h"
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <string>
 #include <vector>
+#include <map>
+#include <set>
+#include <algorithm>
 #include <cstring>
 #include <cstdlib>
 #include <ctime>
@@ -107,6 +111,17 @@ void showHelp() {
               << Terminal::fg(Terminal::Color::BRIGHT_CYAN) << " [FILE]"
               << Terminal::fg(Terminal::Color::WHITE) << "  Bulk validate tokens (default: tokens-seen)\n";
 
+    std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "--analyze"
+              << Terminal::fg(Terminal::Color::WHITE) << "           Comprehensive OSINT analysis and security audit\n";
+
+    std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "--groupid"
+              << Terminal::fg(Terminal::Color::BRIGHT_CYAN) << " <ID>"
+              << Terminal::fg(Terminal::Color::WHITE) << "       Analyze specific group (use with --analyze)\n";
+
+    std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "--chatid"
+              << Terminal::fg(Terminal::Color::BRIGHT_CYAN) << " <ID>"
+              << Terminal::fg(Terminal::Color::WHITE) << "        Analyze specific chat (use with --analyze)\n";
+
     std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "--read-botrights"
               << Terminal::fg(Terminal::Color::WHITE) << "      Read default bot administrator rights\n";
 
@@ -130,6 +145,20 @@ void showHelp() {
     std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_MAGENTA) << "TGDIGGER_TOKEN"
               << Terminal::fg(Terminal::Color::WHITE) << "     Bot token (alternative to --token)\n";
 
+    std::cout << Terminal::reset() << std::endl;
+
+    // Examples section
+    std::cout << Terminal::fg(Terminal::Color::BRIGHT_YELLOW) << Terminal::bold() << "EXAMPLES:\n" << Terminal::reset();
+    std::cout << Terminal::fg(Terminal::Color::WHITE);
+    std::cout << "  # Validate a bot token\n";
+    std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "telegramdigger --validate --token YOUR_TOKEN\n\n";
+    std::cout << Terminal::fg(Terminal::Color::WHITE);
+    std::cout << "  # Comprehensive security analysis\n";
+    std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "telegramdigger --analyze --token YOUR_TOKEN\n\n";
+    std::cout << Terminal::fg(Terminal::Color::WHITE);
+    std::cout << "  # Analyze specific groups or chats\n";
+    std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "telegramdigger --analyze --groupid -1001234567890\n";
+    std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "telegramdigger --analyze --chatid 123456789 --chatid 987654321\n";
     std::cout << Terminal::reset() << std::endl;
 
     // Commands section (placeholders for future implementation)
@@ -830,6 +859,622 @@ void deleteWebhook(const std::string& token) {
 }
 
 /**
+ * Get current timestamp string
+ */
+std::string getCurrentTimestamp() {
+    time_t now = time(nullptr);
+    struct tm* timeinfo = localtime(&now);
+    char buffer[80];
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", timeinfo);
+    return std::string(buffer);
+}
+
+/**
+ * Mask token for display (show first 10 chars)
+ */
+std::string maskToken(const std::string& token) {
+    if (token.length() <= 15) {
+        return std::string(token.length(), '*');
+    }
+    return token.substr(0, 12) + "..." + std::string(token.length() - 15, '*');
+}
+
+/**
+ * Count findings by severity
+ */
+int countFindings(const std::vector<SecurityFinding>& findings, const std::string& severity) {
+    int count = 0;
+    for (const auto& finding : findings) {
+        if (finding.category == severity) {
+            count++;
+        }
+    }
+    return count;
+}
+
+/**
+ * Get emoji for severity level
+ */
+std::string getSeverityEmoji(const std::string& severity) {
+    if (severity == "CRITICAL") return "🔴";
+    if (severity == "HIGH") return "🟠";
+    if (severity == "MEDIUM") return "🟡";
+    if (severity == "LOW") return "🔵";
+    return "ℹ️";
+}
+
+/**
+ * Format admin rights as markdown table
+ */
+std::string formatAdminRights(const BotAdminRights& rights) {
+    std::ostringstream oss;
+    oss << "| Permission | Enabled |\n";
+    oss << "|------------|----------|\n";
+    oss << "| Anonymous | " << (rights.isAnonymous ? "Yes" : "No") << " |\n";
+    oss << "| Manage Chat | " << (rights.canManageChat ? "Yes" : "No") << " |\n";
+    oss << "| Delete Messages | " << (rights.canDeleteMessages ? "Yes" : "No") << " |\n";
+    oss << "| Manage Video Chats | " << (rights.canManageVideoChats ? "Yes" : "No") << " |\n";
+    oss << "| Restrict Members | " << (rights.canRestrictMembers ? "Yes" : "No") << " |\n";
+    oss << "| Promote Members | " << (rights.canPromoteMembers ? "Yes" : "No") << " |\n";
+    oss << "| Change Info | " << (rights.canChangeInfo ? "Yes" : "No") << " |\n";
+    oss << "| Invite Users | " << (rights.canInviteUsers ? "Yes" : "No") << " |\n";
+    oss << "| Post Messages | " << (rights.canPostMessages ? "Yes" : "No") << " |\n";
+    oss << "| Edit Messages | " << (rights.canEditMessages ? "Yes" : "No") << " |\n";
+    oss << "| Pin Messages | " << (rights.canPinMessages ? "Yes" : "No") << " |\n";
+    oss << "| Manage Topics | " << (rights.canManageTopics ? "Yes" : "No") << " |\n";
+    return oss.str();
+}
+
+/**
+ * Analyze security weaknesses
+ */
+void analyzeSecurityWeaknesses(BotAnalysis& analysis) {
+    // 1. Webhook Security Issues
+    if (!analysis.webhookInfo.url.empty()) {
+        // Check for HTTP webhook
+        if (analysis.webhookInfo.url.find("http://") == 0) {
+            analysis.findings.push_back(SecurityFinding(
+                "CRITICAL",
+                "Insecure Webhook Protocol",
+                "The webhook is configured to use HTTP instead of HTTPS, which means all bot communications are transmitted in plain text and can be intercepted.",
+                "Configure the webhook to use HTTPS with a valid SSL certificate to ensure encrypted communication."
+            ));
+        }
+
+        // Check for high pending update count
+        if (analysis.webhookInfo.pendingUpdateCount > 50) {
+            analysis.findings.push_back(SecurityFinding(
+                "HIGH",
+                "High Pending Update Count",
+                "There are " + std::to_string(analysis.webhookInfo.pendingUpdateCount) + " pending updates, which suggests the webhook endpoint may not be functioning properly or is not processing updates.",
+                "Investigate webhook endpoint availability and processing. Unprocessed updates may contain sensitive user data."
+            ));
+        }
+
+        // Check for exposed IP
+        if (!analysis.webhookInfo.ipAddress.empty()) {
+            analysis.findings.push_back(SecurityFinding(
+                "INFO",
+                "Webhook IP Address Exposed",
+                "The webhook is configured with IP address: " + analysis.webhookInfo.ipAddress,
+                "This is informational - ensure the IP address corresponds to your authorized infrastructure."
+            ));
+        }
+    } else {
+        analysis.findings.push_back(SecurityFinding(
+            "LOW",
+            "No Webhook Configured",
+            "The bot is using long polling instead of webhooks. While not insecure, webhooks are generally more reliable for production bots.",
+            "Consider configuring a webhook with HTTPS for more reliable message delivery."
+        ));
+    }
+
+    // 2. Permission Issues
+    if (analysis.botInfo.canReadAllGroupMessages) {
+        analysis.findings.push_back(SecurityFinding(
+            "MEDIUM",
+            "Privacy Mode Disabled",
+            "The bot can read all messages in groups, not just commands and mentions. This creates privacy concerns for group members.",
+            "Unless required for bot functionality, enable privacy mode by contacting @BotFather and using /setprivacy."
+        ));
+    }
+
+    // Check for excessive admin rights
+    int groupRightsCount = 0;
+    if (analysis.groupRights.canManageChat) groupRightsCount++;
+    if (analysis.groupRights.canDeleteMessages) groupRightsCount++;
+    if (analysis.groupRights.canRestrictMembers) groupRightsCount++;
+    if (analysis.groupRights.canPromoteMembers) groupRightsCount++;
+    if (analysis.groupRights.canChangeInfo) groupRightsCount++;
+
+    if (groupRightsCount > 5) {
+        analysis.findings.push_back(SecurityFinding(
+            "MEDIUM",
+            "Excessive Administrator Rights",
+            "The bot has extensive administrator permissions by default. This may be unnecessary and increases risk if the token is compromised.",
+            "Review and minimize default administrator rights to only those required for bot functionality."
+        ));
+    }
+
+    // Check if bot is in too many groups
+    if (analysis.chats.size() > 10) {
+        analysis.findings.push_back(SecurityFinding(
+            "LOW",
+            "Bot Active in Many Groups",
+            "The bot is active in " + std::to_string(analysis.chats.size()) + " chats/groups. This increases the attack surface if the bot is compromised.",
+            "Regularly audit which groups the bot is in and remove it from unnecessary groups."
+        ));
+    }
+
+    // 3. Data Exposure Issues
+    if (analysis.totalUpdates > 10) {
+        analysis.findings.push_back(SecurityFinding(
+            "HIGH",
+            "Unprocessed Updates Containing User Data",
+            "There are " + std::to_string(analysis.totalUpdates) + " unprocessed updates in the queue. These may contain user messages, usernames, and other sensitive information.",
+            "Process and clear pending updates immediately. Implement proper update handling to prevent data accumulation."
+        ));
+    }
+
+    // Check for sensitive info in bot description
+    std::string descLower = analysis.description;
+    std::transform(descLower.begin(), descLower.end(), descLower.begin(), ::tolower);
+    if (descLower.find("api") != std::string::npos ||
+        descLower.find("key") != std::string::npos ||
+        descLower.find("token") != std::string::npos ||
+        descLower.find("password") != std::string::npos ||
+        descLower.find("secret") != std::string::npos) {
+        analysis.findings.push_back(SecurityFinding(
+            "MEDIUM",
+            "Potentially Sensitive Information in Description",
+            "The bot description contains keywords like 'api', 'key', 'token', 'password', or 'secret' which may indicate sensitive information disclosure.",
+            "Review and sanitize the bot description to ensure no credentials or sensitive configuration details are exposed."
+        ));
+    }
+
+    // Check for exposed usernames in updates
+    std::set<std::string> exposedUsernames;
+    for (const auto& update : analysis.updates) {
+        if (!update.username.empty()) {
+            exposedUsernames.insert(update.username);
+        }
+    }
+    if (exposedUsernames.size() > 5) {
+        analysis.findings.push_back(SecurityFinding(
+            "MEDIUM",
+            "Multiple User Identities in Update Queue",
+            std::to_string(exposedUsernames.size()) + " different users have unprocessed messages in the update queue.",
+            "Clear the update queue to prevent exposure of user activity patterns and identities."
+        ));
+    }
+
+    // 4. Configuration Gaps
+    if (analysis.commands.empty()) {
+        analysis.findings.push_back(SecurityFinding(
+            "LOW",
+            "No Commands Configured",
+            "The bot has no commands configured. While not a security issue, this may indicate incomplete bot setup.",
+            "Configure bot commands using @BotFather to provide clear user interface and prevent confusion."
+        ));
+    }
+
+    if (analysis.description.empty()) {
+        analysis.findings.push_back(SecurityFinding(
+            "LOW",
+            "No Bot Description",
+            "The bot has no description set. This may lead to user confusion about bot purpose and legitimacy.",
+            "Set a clear bot description using @BotFather to help users understand the bot's purpose."
+        ));
+    }
+
+    // Check for contradictory settings
+    if (!analysis.botInfo.canJoinGroups && !analysis.chats.empty()) {
+        bool hasGroups = false;
+        for (const auto& chat : analysis.chats) {
+            if (chat.type == "group" || chat.type == "supergroup") {
+                hasGroups = true;
+                break;
+            }
+        }
+        if (hasGroups) {
+            analysis.findings.push_back(SecurityFinding(
+                "MEDIUM",
+                "Configuration Inconsistency",
+                "The bot is configured to not join groups, but is currently active in group chats. This suggests misconfiguration.",
+                "Review bot settings with @BotFather to ensure consistency between capabilities and actual usage."
+            ));
+        }
+    }
+}
+
+/**
+ * Display analysis summary to terminal
+ */
+void displayAnalysisSummary(const BotAnalysis& analysis) {
+    std::cout << Terminal::fg(Terminal::Color::BRIGHT_YELLOW) << Terminal::bold();
+    std::cout << "Analysis Summary" << Terminal::reset() << "\n";
+    std::cout << "══════════════════════════════════════════════════\n\n";
+
+    // Bot info
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Bot: ";
+    std::cout << Terminal::fg(Terminal::Color::BRIGHT_WHITE) << analysis.botInfo.firstName;
+    std::cout << Terminal::fg(Terminal::Color::BRIGHT_BLACK) << " (@" << analysis.botInfo.username << ")\n";
+    std::cout << Terminal::reset();
+
+    // Statistics
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Pending Updates: ";
+    std::cout << Terminal::fg(Terminal::Color::BRIGHT_WHITE) << analysis.totalUpdates << "\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Unique Users: ";
+    std::cout << Terminal::fg(Terminal::Color::BRIGHT_WHITE) << analysis.uniqueUsers.size() << "\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Active Chats: ";
+    std::cout << Terminal::fg(Terminal::Color::BRIGHT_WHITE) << analysis.chats.size() << "\n";
+    std::cout << Terminal::reset();
+
+    // Security findings
+    std::cout << "\n" << Terminal::fg(Terminal::Color::BRIGHT_YELLOW) << Terminal::bold();
+    std::cout << "Security Findings" << Terminal::reset() << "\n";
+    std::cout << "──────────────────────────────────────────────────\n";
+
+    int critical = countFindings(analysis.findings, "CRITICAL");
+    int high = countFindings(analysis.findings, "HIGH");
+    int medium = countFindings(analysis.findings, "MEDIUM");
+    int low = countFindings(analysis.findings, "LOW");
+
+    if (critical > 0) {
+        std::cout << Terminal::fg(Terminal::Color::BRIGHT_RED) << Terminal::bold();
+        std::cout << "  CRITICAL: " << critical << Terminal::reset() << "\n";
+    }
+    if (high > 0) {
+        std::cout << Terminal::fg(Terminal::Color::RED);
+        std::cout << "  HIGH:     " << high << Terminal::reset() << "\n";
+    }
+    if (medium > 0) {
+        std::cout << Terminal::fg(Terminal::Color::YELLOW);
+        std::cout << "  MEDIUM:   " << medium << Terminal::reset() << "\n";
+    }
+    if (low > 0) {
+        std::cout << Terminal::fg(Terminal::Color::BLUE);
+        std::cout << "  LOW:      " << low << Terminal::reset() << "\n";
+    }
+
+    if (analysis.findings.empty()) {
+        std::cout << Terminal::fg(Terminal::Color::BRIGHT_GREEN);
+        std::cout << "  No security issues detected!\n";
+        std::cout << Terminal::reset();
+    }
+
+    std::cout << "\n";
+}
+
+/**
+ * Generate markdown report
+ */
+std::string generateMarkdownReport(const BotAnalysis& analysis, const std::string& token) {
+    std::ostringstream report;
+
+    // Header
+    report << "# Telegram Bot Security Analysis Report\n\n";
+    report << "**Generated:** " << getCurrentTimestamp() << "\n";
+    report << "**Tool:** TelegramDigger v" << VERSION << "\n";
+    report << "**Token:** `" << maskToken(token) << "`\n\n";
+    report << "---\n\n";
+
+    // Executive Summary
+    report << "## Executive Summary\n\n";
+    report << "- **Bot Name:** " << analysis.botInfo.firstName << "\n";
+    report << "- **Username:** @" << analysis.botInfo.username << "\n";
+    report << "- **Bot ID:** " << analysis.botInfo.id << "\n";
+    report << "- **Total Findings:** " << analysis.findings.size() << "\n";
+
+    int critical = countFindings(analysis.findings, "CRITICAL");
+    int high = countFindings(analysis.findings, "HIGH");
+    int medium = countFindings(analysis.findings, "MEDIUM");
+    int low = countFindings(analysis.findings, "LOW");
+
+    report << "- **Critical Issues:** " << critical << "\n";
+    report << "- **High Issues:** " << high << "\n";
+    report << "- **Medium Issues:** " << medium << "\n";
+    report << "- **Low Issues:** " << low << "\n\n";
+
+    // Security Findings
+    report << "## Security Findings\n\n";
+
+    if (analysis.findings.empty()) {
+        report << "✅ No security issues detected.\n\n";
+    } else {
+        for (const auto& finding : analysis.findings) {
+            report << "### " << getSeverityEmoji(finding.category) << " ";
+            report << finding.category << ": " << finding.title << "\n\n";
+            report << "**Description:** " << finding.description << "\n\n";
+            report << "**Recommendation:** " << finding.recommendation << "\n\n";
+            report << "---\n\n";
+        }
+    }
+
+    // Bot Configuration
+    report << "## Bot Configuration\n\n";
+    report << "### Basic Information\n\n";
+    report << "| Property | Value |\n";
+    report << "|----------|-------|\n";
+    report << "| Bot ID | `" << analysis.botInfo.id << "` |\n";
+    report << "| Name | " << analysis.displayName << " |\n";
+    report << "| Username | @" << analysis.botInfo.username << " |\n";
+    report << "| First Name | " << analysis.botInfo.firstName << " |\n";
+    report << "| Can Join Groups | " << (analysis.botInfo.canJoinGroups ? "Yes" : "No") << " |\n";
+    report << "| Can Read All Messages | " << (analysis.botInfo.canReadAllGroupMessages ? "Yes ⚠️" : "No ✅") << " |\n";
+    report << "| Supports Inline | " << (analysis.botInfo.supportsInlineQueries ? "Yes" : "No") << " |\n\n";
+
+    // Description
+    if (!analysis.description.empty()) {
+        report << "**Description:**\n> " << analysis.description << "\n\n";
+    }
+
+    // Commands
+    report << "### Configured Commands\n\n";
+    if (analysis.commands.empty()) {
+        report << "⚠️ No commands configured\n\n";
+    } else {
+        report << "| Command | Description |\n";
+        report << "|---------|-------------|\n";
+        for (const auto& cmd : analysis.commands) {
+            report << "| `/" << cmd.command << "` | " << cmd.description << " |\n";
+        }
+        report << "\n";
+    }
+
+    // Admin Rights
+    report << "### Administrator Rights\n\n";
+    report << "#### Group Rights\n\n";
+    report << formatAdminRights(analysis.groupRights);
+    report << "\n#### Channel Rights\n\n";
+    report << formatAdminRights(analysis.channelRights);
+
+    // Webhook Info
+    report << "\n## Webhook Configuration\n\n";
+    if (analysis.webhookInfo.url.empty()) {
+        report << "⚠️ No webhook configured (using long polling)\n\n";
+    } else {
+        report << "| Property | Value |\n";
+        report << "|----------|-------|\n";
+        report << "| URL | `" << analysis.webhookInfo.url << "` |\n";
+        report << "| Pending Updates | " << analysis.webhookInfo.pendingUpdateCount << " |\n";
+        report << "| Max Connections | " << analysis.webhookInfo.maxConnections << " |\n";
+        report << "| IP Address | " << (analysis.webhookInfo.ipAddress.empty() ? "N/A" : analysis.webhookInfo.ipAddress) << " |\n";
+        if (analysis.webhookInfo.lastErrorDate > 0) {
+            report << "| Last Error | " << analysis.webhookInfo.lastErrorMessage << " |\n";
+        }
+        report << "\n";
+    }
+
+    // Updates Analysis
+    report << "## Updates Analysis\n\n";
+    report << "**Total pending updates:** " << analysis.totalUpdates << "\n\n";
+
+    if (analysis.totalUpdates > 0) {
+        report << "**Unique users:** " << analysis.uniqueUsers.size() << "\n";
+        report << "**Unique chats:** " << analysis.chats.size() << "\n\n";
+
+        // Update type breakdown
+        std::map<std::string, int> typeCount;
+        for (const auto& update : analysis.updates) {
+            typeCount[update.type]++;
+        }
+
+        report << "### Update Types\n\n";
+        report << "| Type | Count |\n";
+        report << "|------|-------|\n";
+        for (const auto& pair : typeCount) {
+            report << "| " << pair.first << " | " << pair.second << " |\n";
+        }
+        report << "\n";
+    }
+
+    // Chat Analysis
+    report << "## Chat Analysis\n\n";
+
+    if (analysis.chats.empty()) {
+        report << "No chat information available.\n\n";
+    } else {
+        for (const auto& chat : analysis.chats) {
+            report << "### " << (chat.title.empty() ? "Private Chat" : chat.title) << "\n\n";
+            report << "| Property | Value |\n";
+            report << "|----------|-------|\n";
+            report << "| Chat ID | `" << chat.chatId << "` |\n";
+            report << "| Type | " << chat.type << " |\n";
+            if (!chat.username.empty()) {
+                report << "| Username | @" << chat.username << " |\n";
+            }
+            if (chat.memberCount > 0) {
+                report << "| Members | " << chat.memberCount << " |\n";
+            }
+
+            if (!chat.admins.empty()) {
+                report << "\n**Administrators (" << chat.admins.size() << "):**\n\n";
+                for (const auto& admin : chat.admins) {
+                    report << "- " << admin.firstName;
+                    if (!admin.username.empty()) {
+                        report << " (@" << admin.username << ")";
+                    }
+                    report << " - " << admin.status;
+                    if (!admin.customTitle.empty()) {
+                        report << " (" << admin.customTitle << ")";
+                    }
+                    report << "\n";
+                }
+            }
+            report << "\n";
+        }
+    }
+
+    // Footer
+    report << "---\n\n";
+    report << "*Report generated by TelegramDigger - Security testing tool for Telegram bot tokens*\n";
+    report << "*For authorized security testing and educational purposes only*\n";
+
+    return report.str();
+}
+
+/**
+ * Save analysis report to file
+ */
+void saveAnalysisReport(const std::string& token, const std::string& report) {
+    // Create reports directory
+    std::string homeDir = getenv("HOME");
+    if (!homeDir.empty()) {
+        std::string reportsDir = homeDir + "/.telegramdigger/reports";
+
+        struct stat st;
+        if (stat(reportsDir.c_str(), &st) == -1) {
+            mkdir(reportsDir.c_str(), 0700);
+        }
+
+        // Sanitize token for filename
+        std::string sanitizedToken = token;
+        std::replace(sanitizedToken.begin(), sanitizedToken.end(), ':', '_');
+        std::replace(sanitizedToken.begin(), sanitizedToken.end(), '/', '_');
+
+        std::string reportFile = reportsDir + "/" + sanitizedToken + ".md";
+
+        std::ofstream outFile(reportFile);
+        if (outFile.is_open()) {
+            outFile << report;
+            outFile.close();
+            chmod(reportFile.c_str(), 0600);
+
+            std::cout << "\n";
+            Terminal::success("Report saved to: " + reportFile);
+            std::cout << "\n";
+        } else {
+            Terminal::error("Failed to save report to file");
+        }
+    } else {
+        Terminal::error("Could not determine home directory for report storage");
+    }
+}
+
+/**
+ * Analyze token comprehensively
+ */
+void analyzeToken(const std::string& token, const std::vector<long long>& additionalChatIds = std::vector<long long>()) {
+    // Header
+    std::cout << Terminal::fg(Terminal::Color::BRIGHT_CYAN) << Terminal::bold();
+    if (Terminal::supportsUTF8()) {
+        std::cout << Terminal::ICON_SEARCH << " ";
+    }
+    std::cout << "Comprehensive Bot Analysis" << Terminal::reset() << "\n";
+    std::cout << "══════════════════════════════════════════════════\n\n";
+
+    // Initialize analysis container
+    BotAnalysis analysis;
+    TelegramApi api(token);
+
+    // Phase 1: Basic bot info
+    std::cout << Terminal::fg(Terminal::Color::CYAN) << "[1/8] " << Terminal::reset();
+    std::cout << "Fetching bot information...\n";
+    if (!api.getMe(analysis.botInfo)) {
+        Terminal::error("Failed to fetch bot info: " + api.getLastError());
+        return;
+    }
+
+    // Phase 2: Administrator rights
+    std::cout << Terminal::fg(Terminal::Color::CYAN) << "[2/8] " << Terminal::reset();
+    std::cout << "Checking administrator rights...\n";
+    api.getMyDefaultAdministratorRights(analysis.groupRights, analysis.channelRights);
+
+    // Phase 3: Webhook configuration
+    std::cout << Terminal::fg(Terminal::Color::CYAN) << "[3/8] " << Terminal::reset();
+    std::cout << "Analyzing webhook configuration...\n";
+    api.getWebhookInfo(analysis.webhookInfo);
+
+    // Phase 4: Commands
+    std::cout << Terminal::fg(Terminal::Color::CYAN) << "[4/8] " << Terminal::reset();
+    std::cout << "Fetching bot commands...\n";
+    api.getMyCommands(analysis.commands);
+
+    // Phase 5: Descriptions
+    std::cout << Terminal::fg(Terminal::Color::CYAN) << "[5/8] " << Terminal::reset();
+    std::cout << "Retrieving bot descriptions...\n";
+    api.getMyDescription(analysis.description);
+    api.getMyShortDescription(analysis.shortDescription);
+    api.getMyName(analysis.displayName);
+    if (analysis.displayName.empty()) {
+        analysis.displayName = analysis.botInfo.firstName;
+    }
+
+    // Phase 6: Updates
+    std::cout << Terminal::fg(Terminal::Color::CYAN) << "[6/8] " << Terminal::reset();
+    std::cout << "Fetching pending updates (limit: 100)...\n";
+    api.getUpdates(analysis.updates, 100);
+    analysis.totalUpdates = analysis.updates.size();
+
+    // Phase 7: Chat enumeration
+    std::cout << Terminal::fg(Terminal::Color::CYAN) << "[7/8] " << Terminal::reset();
+    std::cout << "Enumerating chats and groups...\n";
+    std::set<long long> uniqueChatIds;
+
+    // Add chats from updates
+    for (const auto& update : analysis.updates) {
+        if (update.chatId != 0) {
+            uniqueChatIds.insert(update.chatId);
+        }
+        if (update.userId != 0) {
+            analysis.uniqueUsers.insert(update.userId);
+        }
+    }
+
+    // Add additional chat IDs provided by user
+    for (long long chatId : additionalChatIds) {
+        uniqueChatIds.insert(chatId);
+    }
+
+    if (!additionalChatIds.empty()) {
+        std::cout << Terminal::fg(Terminal::Color::CYAN);
+        std::cout << "  Including " << additionalChatIds.size() << " additional chat(s) for deep analysis...\n";
+        std::cout << Terminal::reset();
+    }
+
+    // Deep chat analysis
+    for (long long chatId : uniqueChatIds) {
+        ChatInfo chatInfo;
+        chatInfo.chatId = chatId;
+
+        if (api.getChat(chatId, chatInfo)) {
+            // Try to get member count
+            int memberCount = 0;
+            if (api.getChatMemberCount(chatId, memberCount)) {
+                chatInfo.memberCount = memberCount;
+            }
+
+            // Try to get admins (may fail if not admin)
+            std::vector<ChatAdmin> admins;
+            if (api.getChatAdministrators(chatId, admins)) {
+                chatInfo.admins = admins;
+            }
+
+            analysis.chats.push_back(chatInfo);
+        }
+    }
+
+    // Phase 8: Security analysis
+    std::cout << Terminal::fg(Terminal::Color::CYAN) << "[8/8] " << Terminal::reset();
+    std::cout << "Analyzing security weaknesses...\n";
+    analyzeSecurityWeaknesses(analysis);
+
+    std::cout << "\n";
+    Terminal::success("Analysis complete!");
+    std::cout << "\n";
+
+    // Display summary
+    displayAnalysisSummary(analysis);
+
+    // Generate and save report
+    std::string report = generateMarkdownReport(analysis, token);
+    saveAnalysisReport(token, report);
+}
+
+/**
  * Main entry point
  */
 int main(int argc, char* argv[]) {
@@ -1019,6 +1664,60 @@ int main(int argc, char* argv[]) {
         }
 
         deleteWebhook(token);
+        return 0;
+    }
+
+    // Check for --analyze flag
+    bool shouldAnalyze = false;
+    for (int i = 1; i < argc; i++) {
+        std::string arg = argv[i];
+        if (arg == "--analyze") {
+            shouldAnalyze = true;
+            break;
+        }
+    }
+
+    // Handle analyze
+    if (shouldAnalyze) {
+        std::string token = getToken(argc, argv);
+
+        if (token.empty()) {
+            Terminal::error("No bot token provided");
+            std::cout << "\n" << Terminal::fg(Terminal::Color::YELLOW);
+            std::cout << "Please provide a token using one of these methods:\n";
+            std::cout << "  1. Command line: " << Terminal::fg(Terminal::Color::BRIGHT_GREEN);
+            std::cout << "--token <TOKEN>\n";
+            std::cout << Terminal::fg(Terminal::Color::YELLOW);
+            std::cout << "  2. Environment:  " << Terminal::fg(Terminal::Color::BRIGHT_MAGENTA);
+            std::cout << "export TGDIGGER_TOKEN=<TOKEN>\n";
+            std::cout << Terminal::fg(Terminal::Color::YELLOW);
+            std::cout << "  3. Config file:  " << Terminal::fg(Terminal::Color::BRIGHT_CYAN);
+            std::cout << "~/.telegramdigger/settings.conf\n";
+            std::cout << Terminal::reset();
+            return 1;
+        }
+
+        // Parse optional chat IDs
+        std::vector<long long> additionalChatIds;
+        for (int i = 1; i < argc; i++) {
+            std::string arg = argv[i];
+            if ((arg == "--groupid" || arg == "--chatid") && i + 1 < argc) {
+                try {
+                    long long chatId = std::stoll(argv[i + 1]);
+                    additionalChatIds.push_back(chatId);
+                } catch (const std::exception& e) {
+                    Terminal::error("Invalid chat ID: " + std::string(argv[i + 1]));
+                    std::cout << "\n" << Terminal::fg(Terminal::Color::YELLOW);
+                    std::cout << "Chat IDs must be numeric values\n";
+                    std::cout << "Example: " << Terminal::fg(Terminal::Color::BRIGHT_GREEN);
+                    std::cout << "--analyze --groupid -1001234567890\n";
+                    std::cout << Terminal::reset();
+                    return 1;
+                }
+            }
+        }
+
+        analyzeToken(token, additionalChatIds);
         return 0;
     }
 

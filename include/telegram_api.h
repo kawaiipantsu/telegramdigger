@@ -5,6 +5,7 @@
 #include <string>
 #include <memory>
 #include <vector>
+#include <set>
 
 namespace TelegramDigger {
 
@@ -67,6 +68,113 @@ struct WebhookInfo {
 };
 
 /**
+ * Bot command structure
+ */
+struct BotCommand {
+    std::string command;
+    std::string description;
+
+    BotCommand() {}
+    BotCommand(const std::string& cmd, const std::string& desc)
+        : command(cmd), description(desc) {}
+};
+
+/**
+ * Update structure (simplified for analysis)
+ */
+struct Update {
+    long long updateId;
+    std::string type;          // "message", "edited_message", "channel_post", etc.
+    long long chatId;
+    std::string chatType;      // "private", "group", "supergroup", "channel"
+    std::string chatTitle;
+    long long userId;
+    std::string username;
+    std::string firstName;
+    std::string text;
+    long long timestamp;
+
+    Update() : updateId(0), chatId(0), userId(0), timestamp(0) {}
+};
+
+/**
+ * Chat administrator structure
+ */
+struct ChatAdmin {
+    long long userId;
+    std::string username;
+    std::string firstName;
+    std::string status;        // "creator", "administrator"
+    bool isAnonymous;
+    std::string customTitle;
+
+    ChatAdmin() : userId(0), isAnonymous(false) {}
+};
+
+/**
+ * Chat information structure
+ */
+struct ChatInfo {
+    long long chatId;
+    std::string type;
+    std::string title;
+    std::string username;
+    int memberCount;
+    std::string description;
+    bool hasProtectedContent;
+    std::vector<ChatAdmin> admins;
+
+    ChatInfo() : chatId(0), memberCount(0), hasProtectedContent(false) {}
+};
+
+/**
+ * Security finding structure
+ */
+struct SecurityFinding {
+    std::string category;      // "CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"
+    std::string title;
+    std::string description;
+    std::string recommendation;
+
+    SecurityFinding() {}
+    SecurityFinding(const std::string& cat, const std::string& t,
+                   const std::string& desc, const std::string& rec)
+        : category(cat), title(t), description(desc), recommendation(rec) {}
+};
+
+/**
+ * Complete bot analysis data container
+ */
+struct BotAnalysis {
+    // Basic bot info
+    BotInfo botInfo;
+    BotAdminRights groupRights;
+    BotAdminRights channelRights;
+    WebhookInfo webhookInfo;
+
+    // Commands and descriptions
+    std::vector<BotCommand> commands;
+    std::string description;
+    std::string shortDescription;
+    std::string displayName;
+
+    // Updates analysis
+    int totalUpdates;
+    std::vector<Update> updates;
+
+    // Chat analysis
+    std::vector<ChatInfo> chats;
+
+    // User analysis
+    std::set<long long> uniqueUsers;
+
+    // Security findings
+    std::vector<SecurityFinding> findings;
+
+    BotAnalysis() : totalUpdates(0) {}
+};
+
+/**
  * API response structure
  */
 struct ApiResponse {
@@ -122,6 +230,46 @@ public:
      * Delete webhook
      */
     bool deleteWebhook();
+
+    /**
+     * Get bot commands
+     */
+    bool getMyCommands(std::vector<BotCommand>& commands);
+
+    /**
+     * Get bot description
+     */
+    bool getMyDescription(std::string& description);
+
+    /**
+     * Get bot name
+     */
+    bool getMyName(std::string& name);
+
+    /**
+     * Get bot short description
+     */
+    bool getMyShortDescription(std::string& shortDesc);
+
+    /**
+     * Get pending updates
+     */
+    bool getUpdates(std::vector<Update>& updates, int limit = 100);
+
+    /**
+     * Get chat information
+     */
+    bool getChat(long long chatId, ChatInfo& chatInfo);
+
+    /**
+     * Get chat administrators
+     */
+    bool getChatAdministrators(long long chatId, std::vector<ChatAdmin>& admins);
+
+    /**
+     * Get chat member count
+     */
+    bool getChatMemberCount(long long chatId, int& count);
 
     /**
      * Get last API response

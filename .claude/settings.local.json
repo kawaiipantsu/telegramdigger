@@ -12,7 +12,12 @@
       "Bash(TGDIGGER_TOKEN=\"123456789:ABCdefGHIjklMNOpqrsTUVwxyz-1234567890\" ./bin/telegramdigger --webhook-delete)",
       "Bash(TGDIGGER_TOKEN=\"123456789:ABCdefGHIjklMNOpqrsTUVwxyz-1234567890\" ./bin/telegramdigger --webhook-info)",
       "Bash(ls:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "WebSearch",
+      "WebFetch(domain:core.telegram.org)",
+      "Bash(TGDIGGER_TOKEN=\"123456789:ABCdefGHIjklMNOpqrsTUVwxyz-1234567890\" ./bin/telegramdigger --analyze)",
+      "Bash(TGDIGGER_TOKEN=\"123456789:ABCdefGHIjklMNOpqrsTUVwxyz-1234567890\" ./bin/telegramdigger --analyze --groupid invalid)",
+      "Bash(TGDIGGER_TOKEN=\"123456789:ABCdefGHIjklMNOpqrsTUVwxyz-1234567890\" ./bin/telegramdigger:*)"
     ]
   }
 }
