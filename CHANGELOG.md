@@ -5,6 +5,130 @@ All notable changes to TelegramDigger will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2026-01-06
+
+### Added
+- **Targeted Chat Analysis** for `--analyze` command
+  - `--groupid <ID>` option to analyze specific groups
+  - `--chatid <ID>` option to analyze specific chats
+  - Support for multiple chat IDs in a single command
+  - Enhanced analysis includes user-specified chats beyond update queue
+  - Input validation with helpful error messages for invalid chat IDs
+  - Progress indicator showing when additional chats are being analyzed
+
+### Improved
+- Help screen now includes comprehensive usage examples
+- Examples section demonstrates various analysis scenarios
+- Better documentation for targeted analysis workflows
+
+## [0.6.0] - 2026-01-06
+
+### Added
+
+#### Comprehensive Bot Analysis (`--analyze`)
+- **OSINT Analysis System**
+  - 8-phase analysis process with progress indicators
+  - Comprehensive data collection from multiple Telegram API endpoints
+  - Automatic report generation in markdown format
+  - Secure report storage in `~/.telegramdigger/reports/<token>.md` (0600 permissions)
+
+- **Security Weakness Detection**
+  - **Webhook Security Analysis**
+    - Detection of HTTP webhooks (insecure protocol)
+    - Identification of high pending update counts (>50)
+    - Webhook IP address exposure tracking
+    - Warning for missing webhook configuration
+  - **Permission Issues Analysis**
+    - Privacy mode disabled detection (can read all group messages)
+    - Excessive administrator rights identification
+    - Bot activity in too many groups (>10)
+    - Configuration inconsistency detection
+  - **Data Exposure Analysis**
+    - Unprocessed updates containing user data (>10 pending)
+    - Sensitive information in bot descriptions
+    - Multiple user identities in update queue
+    - Username and identity exposure tracking
+  - **Configuration Gaps Analysis**
+    - Missing bot commands detection
+    - Missing bot descriptions
+    - Incomplete bot setup identification
+    - Contradictory settings detection
+
+- **Data Collection**
+  - Bot information (name, username, capabilities)
+  - Administrator rights (groups and channels)
+  - Webhook configuration and status
+  - Bot commands list
+  - Bot descriptions (full and short)
+  - Display name
+  - Pending updates (up to 100)
+  - Chat enumeration from updates
+  - Deep chat analysis (info, member counts, administrators)
+  - Unique user tracking
+
+- **New Telegram API Methods**
+  - `getMyCommands()` - Fetch configured bot commands
+  - `getMyDescription()` - Get bot description
+  - `getMyName()` - Get bot display name
+  - `getMyShortDescription()` - Get short description
+  - `getUpdates()` - Fetch pending updates with customizable limit
+  - `getChat()` - Get detailed chat information
+  - `getChatAdministrators()` - Get chat administrator list
+  - `getChatMemberCount()` - Get member count for chats
+
+- **Professional Markdown Reports**
+  - Executive summary with severity counts
+  - Detailed security findings with recommendations
+  - Bot configuration analysis
+  - Webhook status and configuration
+  - Updates breakdown by type
+  - Chat analysis with administrator lists
+  - Timestamped report generation
+  - Token masking for security
+
+- **Security Finding Categories**
+  - CRITICAL - Immediate security risks
+  - HIGH - Significant security concerns
+  - MEDIUM - Notable security issues
+  - LOW - Minor security improvements
+  - INFO - Informational findings
+
+- **Terminal Output**
+  - Real-time progress indicators (8 phases)
+  - Color-coded security findings display
+  - Statistics summary (pending updates, unique users, active chats)
+  - Success/error messaging
+  - UTF-8 icon support for enhanced visuals
+
+### Technical Improvements
+
+#### Data Structures
+- `BotCommand` - Bot command information storage
+- `Update` - Update data with multi-type support
+- `ChatInfo` - Comprehensive chat details
+- `ChatAdmin` - Administrator information
+- `SecurityFinding` - Security issue tracking
+- `BotAnalysis` - Complete analysis container
+
+#### JSON Parsing Enhancement
+- Array parsing for commands and administrators
+- Nested object extraction for updates
+- Multi-level JSON navigation
+- Support for complex update types (message, edited_message, channel_post, callback_query)
+
+#### Analysis Engine
+- Modular security weakness detection
+- Configurable severity thresholds
+- Extensible finding system
+- Context-aware analysis rules
+- Privacy-focused checks
+
+### Documentation
+- Updated help screen with `--analyze` option
+- Comprehensive examples in help display
+- Token masking in reports for security
+- Clear error messages for API failures
+
 ## [0.5.0] - 2026-01-05
 
 ### Added

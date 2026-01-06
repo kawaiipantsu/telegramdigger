@@ -1,17 +1,45 @@
-# TelegramDigger v0.5.0 Release Notes
+# TelegramDigger v0.6.1 Release Notes
 
-**Release Date**: January 5, 2026
+**Release Date**: January 6, 2026
 **Developed by**: KawaiiPantsu | THUGS(red) Hacking Community
 
 ---
 
-## 🎉 Major Release: Full-Featured Bot Token Analysis Tool
+## 🎯 Targeted Analysis Enhancement
 
-TelegramDigger v0.5.0 is the first major release, providing a comprehensive suite of tools for analyzing and testing Telegram bot tokens discovered during authorized security assessments.
+TelegramDigger v0.6.1 enhances the comprehensive analysis feature with targeted chat and group analysis capabilities, allowing security researchers to dig deeper into specific chats beyond the bot's update queue.
+
+> **📌 For v0.5.0 release notes, see [RELEASE_v0.5.0.md](RELEASE_v0.5.0.md)**
+> **📌 For v0.6.0 release notes, see [RELEASE_v0.6.0.md](RELEASE_v0.6.0.md)**
 
 ## ✨ Key Features
 
-### 🔗 Webhook Management (NEW!)
+### 🎯 Targeted Chat Analysis (NEW in v0.6.1!)
+Deep dive into specific chats and groups:
+
+- **Targeted Group Analysis** - Analyze specific groups by ID
+- **Targeted Chat Analysis** - Analyze specific chats by ID
+- **Multiple IDs** - Specify multiple chat IDs in a single command
+- **Deep Analysis** - Full chat details, member counts, administrator lists
+
+```bash
+telegramdigger --analyze --groupid -1001234567890 --token "YOUR_TOKEN"
+telegramdigger --analyze --chatid 123456789 --chatid 987654321
+```
+
+### 🔍 Comprehensive Bot Analysis (NEW in v0.6.0!)
+LinPEAS-style OSINT analysis for Telegram bots:
+
+- **8-Phase Analysis** - Progressive data collection with real-time indicators
+- **Security Weakness Detection** - 4 categories (Webhook, Permissions, Data Exposure, Configuration)
+- **Professional Reports** - Markdown reports saved to `~/.telegramdigger/reports/`
+- **Deep Chat Enumeration** - Automatic discovery and analysis of bot's chats
+
+```bash
+telegramdigger --analyze --token "YOUR_TOKEN"
+```
+
+### 🔗 Webhook Management
 Complete webhook configuration management for Telegram bots:
 
 - **Get Webhook Status** - View current webhook configuration, pending updates, and error logs
@@ -127,13 +155,16 @@ telegramdigger --help
 
 | Feature | Command | Description |
 |---------|---------|-------------|
+| **Comprehensive Analysis** | `--analyze` | Full OSINT analysis with security audit |
+| **Targeted Group Analysis** | `--groupid <ID>` | Analyze specific group (with --analyze) |
+| **Targeted Chat Analysis** | `--chatid <ID>` | Analyze specific chat (with --analyze) |
 | Token Validation | `--validate` | Validate bot token via API |
 | Bulk Validation | `--bulk-validate [FILE]` | Validate multiple tokens |
 | Bot Rights | `--read-botrights` | View administrator permissions |
 | Get Webhook | `--webhook-get` | View webhook configuration |
 | Set Webhook | `--webhook-set <URL>` | Configure webhook URL |
 | Delete Webhook | `--webhook-delete` | Remove webhook |
-| Help | `--help` | Show help message |
+| Help | `--help` | Show help message with examples |
 | Version | `--version` | Show version info |
 | About | `--about` | Show about information |
 

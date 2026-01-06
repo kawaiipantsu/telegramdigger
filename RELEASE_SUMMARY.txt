@@ -1,9 +1,9 @@
 ================================================================================
-                    TELEGRAMDIGGER v0.5.0 RELEASE SUMMARY
+                    TELEGRAMDIGGER v0.6.1 RELEASE SUMMARY
 ================================================================================
 
-Release Date:     January 5, 2026
-Version:          0.5.0
+Release Date:     January 6, 2026
+Version:          0.6.1
 Developer:        KawaiiPantsu
 Organization:     THUGS(red) Hacking Community
 Contact:          thugsred@protonmail.com
@@ -14,20 +14,47 @@ Repository:       https://github.com/kawaiipantsu/telegramdigger
 ================================================================================
 
 Binary Package:
-  telegramdigger_0.5.0_amd64.deb                  50 KB
+  telegramdigger_0.6.1_amd64.deb                  80 KB
 
 Documentation:
-  README.md                                       14 KB
-  CHANGELOG.md                                     6 KB
-  RELEASE_NOTES.md                               5.4 KB
-  RELEASE_v0.5.0.md                              3.5 KB
-  GITHUB_RELEASE_GUIDE.md                        3.2 KB
+  README.md                                       ~16 KB
+  CHANGELOG.md                                    ~12 KB
+  RELEASE_NOTES.md                                ~8 KB
+  RELEASE_v0.6.1.md                               ~6 KB
+  RELEASE_v0.6.0.md                               ~8 KB
+  RELEASE_v0.5.0.md                               ~4 KB
 
 Verification:
-  SHA256SUMS                                      97 bytes
+  SHA256SUMS                                      98 bytes
 
 SHA256 Checksum:
-  fdbd102189a5dadc7d39f16f73923fd0bc3a8ae736a9f108d39d98478087a21f
+  821afa680ba2496d577f5b05529d6b0d5297d71be1de50bdd898f2569ed277ec
+
+================================================================================
+                            KEY FEATURES (v0.6.1)
+================================================================================
+
+🎯 TARGETED CHAT ANALYSIS (NEW!)
+   - Analyze specific groups by ID
+   - Analyze specific chats by ID
+   - Multiple chat IDs in single command
+   - Deep chat analysis with member counts and admin lists
+   Commands: --analyze --groupid <ID> --chatid <ID>
+
+🔍 COMPREHENSIVE BOT ANALYSIS (v0.6.0)
+   - 8-phase OSINT analysis system
+   - Security weakness detection (4 categories)
+   - Professional markdown report generation
+   - 100 pending updates analysis
+   - Deep chat enumeration and analysis
+   Command: --analyze
+
+🛡️ SECURITY WEAKNESS DETECTION (v0.6.0)
+   - Webhook Security (HTTP, exposed IPs, failures)
+   - Permission Issues (privacy mode, excessive rights)
+   - Data Exposure (unprocessed updates, sensitive info)
+   - Configuration Gaps (missing commands, descriptions)
+   Severity Levels: CRITICAL, HIGH, MEDIUM, LOW, INFO
 
 ================================================================================
                             KEY FEATURES (v0.5.0)
@@ -123,7 +150,7 @@ Method 3: Local Build
 ================================================================================
 
 1. Install the package:
-   sudo dpkg -i telegramdigger_0.5.0_amd64.deb
+   sudo dpkg -i telegramdigger_0.6.1_amd64.deb
 
 2. Set your bot token:
    export TGDIGGER_TOKEN="123456789:ABCdefGHI..."
@@ -131,18 +158,26 @@ Method 3: Local Build
 3. Validate the token:
    telegramdigger --validate
 
-4. Check admin rights:
-   telegramdigger --read-botrights
+4. Run comprehensive analysis:
+   telegramdigger --analyze
 
-5. View webhook status:
-   telegramdigger --webhook-get
+5. Analyze specific groups:
+   telegramdigger --analyze --groupid -1001234567890
 
-6. Get help:
+6. View the generated report:
+   cat ~/.telegramdigger/reports/*.md
+
+7. Get help:
    telegramdigger --help
 
 ================================================================================
                            COMMAND REFERENCE
 ================================================================================
+
+Analysis & Security Auditing:
+  --analyze                     Comprehensive OSINT analysis and security audit
+  --groupid <ID>                Analyze specific group (use with --analyze)
+  --chatid <ID>                 Analyze specific chat (use with --analyze)
 
 Token Management:
   --validate                    Validate bot token via API
@@ -158,7 +193,7 @@ Webhook Operations:
   --webhook-delete              Delete webhook configuration
 
 General:
-  --help                        Show help message
+  --help                        Show help message with examples
   --version                     Show version information
   --about                       Show about information
   --token <TOKEN>               Specify bot token
@@ -187,13 +222,17 @@ Test with Token:
                         GITHUB RELEASE CHECKLIST
 ================================================================================
 
-[x] Version updated to 0.5.0
+[x] Version updated to 0.6.1
 [x] Code compiled successfully
-[x] DEB package built
-[x] Documentation complete
-[x] Checksums generated
-[x] Release notes written
-[ ] Git repository tagged (v0.5.0)
+[x] Binary built and tested
+[x] CHANGELOG.md updated
+[x] RELEASE_NOTES.md updated
+[x] RELEASE_v0.6.1.md created
+[x] RELEASE_v0.6.0.md created
+[x] RELEASE_SUMMARY.txt updated
+[ ] DEB package built
+[ ] Checksums generated
+[ ] Git repository tagged (v0.6.1)
 [ ] GitHub release created
 [ ] Assets uploaded to GitHub
 [ ] Release published
