@@ -9,7 +9,7 @@
  \###..####.##./
 ```
 
-A professional C++ security testing tool for analyzing and validating Telegram bot tokens discovered during penetration testing and security assessments.
+A professional C++ security testing tool for analyzing and validating Telegram bot tokens discovered during penetration testing and security assessments. Features comprehensive OSINT analysis, message sending capabilities, and token management with annotation support.
 
 **Developed by KawaiiPantsu**
 *Member of THUGS(red) Hacking Community*
@@ -19,12 +19,27 @@ A professional C++ security testing tool for analyzing and validating Telegram b
 
 ## Features
 
+### Core Capabilities
 - 🔍 **Token Validation** - Validate bot tokens via Telegram Bot API
 - 📊 **Bot Information Extraction** - Retrieve detailed bot capabilities and permissions
 - 👑 **Administrator Rights** - Read default bot administrator rights for groups and channels
 - 🔗 **Webhook Management** - Get, set, and delete webhooks for bot updates
+- 🔬 **Security Analysis** - Comprehensive OSINT and security weakness detection
+
+### Message System (NEW in v0.7.0)
+- 💬 **Message Sending** - Send messages to any chat (private, group, channel)
+- 🎨 **Rich Formatting** - Markdown, MarkdownV2, and HTML formatting support
+- 🔕 **Silent Messages** - Send without notifications (--silent)
+- 🔗 **Link Control** - Disable link previews (--nopreview)
+
+### Token Management (NEW in v0.7.0)
+- 📝 **Token Annotation** - Add notes to validated tokens with --note
 - 💾 **Token Tracking** - Automatic storage of validated tokens and metadata
+- 📋 **Bulk Validation** - Validate multiple tokens from files
+
+### User Experience
 - 🎨 **Styled Terminal Output** - ANSI 256-color support with UTF-8 icons
+- 📚 **Comprehensive Documentation** - Including FORMATTING.md guide
 - 🔐 **Security Hardened** - Built with stack protection, PIE, and secure permissions
 - 📦 **DEB Packaging** - Easy installation on Debian-based systems
 
@@ -63,6 +78,9 @@ sudo dpkg -i telegramdigger_*.deb
 # Validate using command-line argument
 telegramdigger --validate --token "YOUR_BOT_TOKEN"
 
+# Validate with annotation (NEW in v0.7.0)
+telegramdigger --validate --token "YOUR_BOT_TOKEN" --note "Found on production server"
+
 # Using environment variable
 export TGDIGGER_TOKEN="YOUR_BOT_TOKEN"
 telegramdigger --validate
@@ -71,6 +89,8 @@ telegramdigger --validate
 echo "bot_token=YOUR_BOT_TOKEN" >> ~/.telegramdigger/settings.conf
 telegramdigger --validate
 ```
+
+**Token Annotation:** The `--note` option allows you to add context to validated tokens, making it easier to track where tokens were discovered and their purpose.
 
 ### Bulk Token Validation
 
@@ -162,6 +182,100 @@ Can Edit Messages:      Yes
 Can Pin Messages:       Yes
 Can Manage Topics:      No
 ```
+
+### Message Sending (NEW in v0.7.0)
+
+Send messages to any Telegram chat directly from the command line. Perfect for automated alerts, security notifications, and bot interaction testing.
+
+#### Basic Message Sending
+
+```bash
+# Send plain text message
+telegramdigger --send-message "Hello World" --chatid 123456789 --token "YOUR_BOT_TOKEN"
+
+# Using environment variable
+export TGDIGGER_TOKEN="YOUR_BOT_TOKEN"
+telegramdigger --send-message "Hello World" --chatid 123456789
+```
+
+#### Formatted Messages
+
+**Markdown Formatting:**
+```bash
+telegramdigger --send-message "*bold* _italic_ \`code\` [link](https://example.com)" \
+  --chatid 123456789 --parse-mode Markdown
+```
+
+**HTML Formatting:**
+```bash
+telegramdigger --send-message "<b>Alert:</b> Token found at <code>/var/www/config.php</code>" \
+  --chatid 123456789 --parse-mode HTML
+```
+
+**MarkdownV2 Formatting:**
+```bash
+telegramdigger --send-message "*bold* __underline__ ~strike~ \`code\`" \
+  --chatid 123456789 --parse-mode MarkdownV2
+```
+
+#### Advanced Options
+
+**Silent Messages** (no notifications):
+```bash
+telegramdigger --send-message "Low priority update" --chatid 123456789 --silent
+```
+
+**Disable Link Preview:**
+```bash
+telegramdigger --send-message "Check https://example.com for details" \
+  --chatid 123456789 --nopreview
+```
+
+**Combine All Options:**
+```bash
+telegramdigger --send-message "<b>Security Alert</b>
+
+Token exposed: <code>123456:ABC...</code>
+Location: Production server
+
+<i>Action required</i>" \
+  --chatid -1001234567890 \
+  --parse-mode HTML \
+  --silent \
+  --nopreview
+```
+
+**Use Cases:**
+- Automated security alerts
+- Bot interaction testing
+- Monitoring notifications
+- Incident response messaging
+- Penetration testing documentation
+
+See **[FORMATTING.md](FORMATTING.md)** for complete formatting guide with examples.
+
+### Security Analysis (NEW in v0.6.0)
+
+Perform comprehensive OSINT and security analysis of bot tokens:
+
+```bash
+# Full bot analysis
+telegramdigger --analyze --token "YOUR_BOT_TOKEN"
+
+# Analyze specific groups
+telegramdigger --analyze --token "YOUR_BOT_TOKEN" --groupid -1001234567890
+
+# Analyze multiple chats
+telegramdigger --analyze --token "YOUR_BOT_TOKEN" --chatid 123456789 --chatid 987654321
+```
+
+**Analysis Features:**
+- 8-phase security assessment
+- Webhook security analysis
+- Permission and capability review
+- Data exposure detection
+- Chat and user analysis
+- Automatic markdown report generation
 
 ### Webhook Management
 
@@ -276,14 +390,40 @@ Telegram bot tokens follow the format: `<bot_id>:<token_hash>`
 
 ### Command-Line Options
 
+#### General Options
 ```bash
 telegramdigger --help                    # Show help message
 telegramdigger --version                 # Show version information
 telegramdigger --about                   # Show about information
 telegramdigger --token <TOKEN>           # Specify bot token
+```
+
+#### Token Validation & Analysis
+```bash
 telegramdigger --validate                # Validate token via API
+telegramdigger --note <TEXT>             # Add note to validated token
 telegramdigger --bulk-validate [FILE]    # Bulk validate tokens from file
+telegramdigger --analyze                 # Comprehensive security analysis
+telegramdigger --groupid <ID>            # Analyze specific group (with --analyze)
+telegramdigger --chatid <ID>             # Analyze specific chat (with --analyze)
+```
+
+#### Message Sending (v0.7.0)
+```bash
+telegramdigger --send-message <TEXT>     # Send message to chat
+telegramdigger --chatid <ID>             # Target chat ID
+telegramdigger --parse-mode <MODE>       # Formatting: Markdown, MarkdownV2, HTML
+telegramdigger --silent                  # Send without notification
+telegramdigger --nopreview               # Disable link preview
+```
+
+#### Bot Information & Rights
+```bash
 telegramdigger --read-botrights          # Read default bot admin rights
+```
+
+#### Webhook Management
+```bash
 telegramdigger --webhook-get             # Get current webhook information
 telegramdigger --webhook-info            # Get webhook status (alias)
 telegramdigger --webhook-set <URL>       # Set webhook URL
@@ -348,11 +488,14 @@ Contains:
 ### Token History
 **Location:** `~/.telegramdigger/tokens-seen`
 
-CSV format: `<token>#<timestamp>`
+CSV format: `<token>#<timestamp>#<note>` (note is optional)
 ```
-123456789:ABCdefGHI...#2026-01-05 12:34:56
-987654321:XYZabcdef...#2026-01-05 14:22:10
+123456789:ABCdefGHI...#2026-01-05 12:34:56#Production web server
+987654321:XYZabcdef...#2026-01-05 14:22:10#Client mobile app
+555666777:TestToken...#2026-01-07 10:15:30
 ```
+
+**NEW in v0.7.0:** Use `--note` with `--validate` to add notes to tokens.
 
 ## Configuration
 
@@ -362,10 +505,12 @@ Configuration directory: `~/.telegramdigger/`
 ```
 ~/.telegramdigger/
 ├── settings.conf           # User configuration (key=value format)
-├── tokens-seen            # CSV log of validated tokens
-└── valid-tokens/          # Directory containing bot information
-    ├── <token1>           # Bot details for token1
-    └── <token2>           # Bot details for token2
+├── tokens-seen            # CSV log of validated tokens (with optional notes)
+├── valid-tokens/          # Directory containing bot information
+│   ├── <token1>           # Bot details for token1
+│   └── <token2>           # Bot details for token2
+└── reports/               # Analysis reports (NEW in v0.6.0)
+    └── <token>.md         # Markdown report for each analyzed token
 ```
 
 ### settings.conf Format
@@ -413,15 +558,17 @@ make help           # Show all targets
 ### Project Structure
 ```
 telegramdigger/
-├── src/              # Source files
+├── src/                   # Source files
 │   ├── main.cpp           # Entry point and CLI
 │   ├── terminal.cpp       # Terminal styling
 │   ├── config.cpp         # Configuration manager
 │   ├── http_client.cpp    # HTTP/HTTPS client
 │   └── telegram_api.cpp   # Telegram API client
-├── include/          # Header files
-├── Makefile          # Build system
-└── README.md         # This file
+├── include/               # Header files
+├── Makefile               # Build system
+├── README.md              # This file
+├── FORMATTING.md          # Message formatting guide (NEW in v0.7.0)
+└── CHANGELOG.md           # Version history
 ```
 
 ## Legal Notice
