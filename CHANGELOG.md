@@ -5,6 +5,75 @@ All notable changes to TelegramDigger will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-01-07
+
+### Added
+
+#### Token Annotation System
+- **`--note` option** for `--validate` command
+  - Add custom notes to tokens in the tokens-seen file
+  - Notes appended as third field in CSV format: `token#timestamp#note`
+  - Useful for tracking token sources and context
+  - Example: `--validate --token TOKEN --note "Found on production server"`
+
+#### Message Sending System (`--send-message`)
+- **Complete message sending functionality**
+  - `--send-message <TEXT>` - Send text messages to any chat
+  - `--chatid <ID>` - Specify target chat ID (private, group, or channel)
+  - Support for all chat types (private chats, groups, supergroups, channels)
+  - Message ID returned on successful send
+
+- **Advanced Formatting Support**
+  - `--parse-mode <MODE>` - Format messages with Markdown, MarkdownV2, or HTML
+  - **Markdown**: `*bold*`, `_italic_`, `` `code` ``, `[link](URL)`
+  - **MarkdownV2**: Enhanced Markdown with `__underline__`, `~strikethrough~`, `||spoiler||`
+  - **HTML**: `<b>`, `<i>`, `<u>`, `<code>`, `<pre>`, `<a>` tags
+  - Full URL encoding for special characters
+  - Comprehensive formatting guide in FORMATTING.md
+
+- **Message Delivery Options**
+  - `--silent` - Send messages without notifications (no sound/vibration)
+    - Perfect for automated monitoring
+    - Useful for off-hours alerts
+    - Low-priority status updates
+  - `--nopreview` - Disable link preview generation
+    - Cleaner messages with multiple URLs
+    - Security best practice for suspicious links
+    - Faster message delivery
+
+- **Examples**:
+  ```bash
+  # Send plain text message
+  telegramdigger --send-message "Hello World" --chatid 123456789
+
+  # Send formatted HTML message
+  telegramdigger --send-message "<b>Alert:</b> Token found" --chatid 123 --parse-mode HTML
+
+  # Send silent message without link preview
+  telegramdigger --send-message "Check https://example.com" --chatid 123 --silent --nopreview
+  ```
+
+#### Documentation
+- **FORMATTING.md** - Comprehensive formatting guide
+  - Complete syntax reference for all three formatting modes
+  - Real-world examples for security alerts, monitoring, and automation
+  - Best practices for silent messages and link previews
+  - Tips for choosing the right formatting mode
+  - Common use cases with working examples
+
+### Improved
+- Help screen updated with message sending options
+- Extended examples section with formatting demonstrations
+- Enhanced output display showing parse mode, silent status, and preview settings
+- Better error messages for missing parameters
+
+### Technical
+- Extended `TelegramApi::sendMessage()` with formatting and delivery options
+- Added URL encoding for message text
+- Implemented boolean flags for notification and preview control
+- New argument parsing functions: `getParseMode()`, `hasSilentFlag()`, `hasNoPreviewFlag()`
+- Updated `Config::saveTokenSeen()` to support optional notes
+
 ## [0.6.1] - 2026-01-06
 
 ### Added

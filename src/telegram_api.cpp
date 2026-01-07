@@ -817,4 +817,67 @@ bool TelegramApi::getChatMemberCount(long long chatId, int& count) {
     return true;
 }
 
+bool TelegramApi::sendMessage(long long chatId, const std::string& text, long long& messageId,
+                              const std::string& parseMode, bool disableNotification,
+                              bool disableWebPagePreview) {
+    std::ostringstream urlStream;
+    urlStream << buildUrl("sendMessage");
+    urlStream << "?chat_id=" << chatId;
+
+    // URL encode the text (basic implementation)
+    std::string encodedText;
+    for (char c : text) {
+        if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
+            encodedText += c;
+        } else if (c == ' ') {
+            encodedText += '+';
+        } else {
+            char hex[4];
+            snprintf(hex, sizeof(hex), "%%%02X", static_cast<unsigned char>(c));
+            encodedText += hex;
+        }
+    }
+
+    urlStream << "&text=" << encodedText;
+
+    // Add parse_mode if specified
+    if (!parseMode.empty()) {
+        urlStream << "&parse_mode=" << parseMode;
+    }
+
+    // Add disable_notification if true
+    if (disableNotification) {
+        urlStream << "&disable_notification=true";
+    }
+
+    // Add disable_web_page_preview if true
+    if (disableWebPagePreview) {
+        urlStream << "&disable_web_page_preview=true";
+    }
+
+    std::string url = urlStream.str();
+    HttpResponse response = httpClient_->get(url);
+
+    if (!response.success) {
+        lastResponse_.ok = false;
+        lastResponse_.description = "HTTP request failed: " + response.error;
+        return false;
+    }
+
+    parseJsonResponse(response.body, lastResponse_);
+
+    if (!lastResponse_.ok) {
+        return false;
+    }
+
+    // Extract message_id from result
+    size_t resultPos = response.body.find("\"result\":");
+    if (resultPos != std::string::npos) {
+        std::string resultJson = response.body.substr(resultPos);
+        messageId = extractJsonInt(resultJson, "message_id");
+    }
+
+    return true;
+}
+
 } // namespace TelegramDigger

@@ -272,6 +272,16 @@ public:
     bool getChatMemberCount(long long chatId, int& count);
 
     /**
+     * Send message to a chat
+     * @param parseMode Optional: "Markdown", "MarkdownV2", or "HTML"
+     * @param disableNotification Optional: Send message silently (no notification)
+     * @param disableWebPagePreview Optional: Disable link previews
+     */
+    bool sendMessage(long long chatId, const std::string& text, long long& messageId,
+                    const std::string& parseMode = "", bool disableNotification = false,
+                    bool disableWebPagePreview = false);
+
+    /**
      * Get last API response
      */
     const ApiResponse& getLastResponse() const;

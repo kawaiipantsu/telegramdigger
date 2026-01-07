@@ -135,7 +135,7 @@ std::string Config::getTokensSeenFile() const {
     return configDir_ + "/tokens-seen";
 }
 
-bool Config::saveTokenSeen(const std::string& token) {
+bool Config::saveTokenSeen(const std::string& token, const std::string& note) {
     if (!ensureConfigDir()) {
         return false;
     }
@@ -152,7 +152,11 @@ bool Config::saveTokenSeen(const std::string& token) {
         return false;
     }
 
-    file << token << "#" << dateStr << std::endl;
+    file << token << "#" << dateStr;
+    if (!note.empty()) {
+        file << "#" << note;
+    }
+    file << std::endl;
     file.close();
 
     return true;

@@ -17,7 +17,14 @@
       "WebFetch(domain:core.telegram.org)",
       "Bash(TGDIGGER_TOKEN=\"123456789:ABCdefGHIjklMNOpqrsTUVwxyz-1234567890\" ./bin/telegramdigger --analyze)",
       "Bash(TGDIGGER_TOKEN=\"123456789:ABCdefGHIjklMNOpqrsTUVwxyz-1234567890\" ./bin/telegramdigger --analyze --groupid invalid)",
-      "Bash(TGDIGGER_TOKEN=\"123456789:ABCdefGHIjklMNOpqrsTUVwxyz-1234567890\" ./bin/telegramdigger:*)"
+      "Bash(TGDIGGER_TOKEN=\"123456789:ABCdefGHIjklMNOpqrsTUVwxyz-1234567890\" ./bin/telegramdigger:*)",
+      "Bash(TGDIGGER_TOKEN=\"123456789:ABCdefGHIjklMNOpqrsTUVwxyz-1234567890\" ./bin/telegramdigger --validate --note \"Found on production server\")",
+      "Bash(if [ -f ~/.telegramdigger/tokens-seen ])",
+      "Bash(then cat ~/.telegramdigger/tokens-seen)",
+      "Bash(else echo \"No tokens-seen file exists yet\")",
+      "Bash(fi)",
+      "Bash(git tag:*)",
+      "Bash(git add:*)"
     ]
   }
 }

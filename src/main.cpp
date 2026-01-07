@@ -104,6 +104,10 @@ void showHelp() {
               << Terminal::fg(Terminal::Color::BRIGHT_CYAN) << " <TOKEN>"
               << Terminal::fg(Terminal::Color::WHITE) << "      Set bot token for operations\n";
 
+    std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "--note"
+              << Terminal::fg(Terminal::Color::BRIGHT_CYAN) << " <NOTE>"
+              << Terminal::fg(Terminal::Color::WHITE) << "       Add note to tokens-seen entry (use with --validate)\n";
+
     std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "--validate"
               << Terminal::fg(Terminal::Color::WHITE) << "          Validate bot token via API\n";
 
@@ -138,6 +142,24 @@ void showHelp() {
     std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "--webhook-info"
               << Terminal::fg(Terminal::Color::WHITE) << "       Get webhook status (alias for --webhook-get)\n";
 
+    std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "--send-message"
+              << Terminal::fg(Terminal::Color::BRIGHT_CYAN) << " <TEXT>"
+              << Terminal::fg(Terminal::Color::WHITE) << " Send message to a chat (requires --chatid)\n";
+
+    std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "--chatid"
+              << Terminal::fg(Terminal::Color::BRIGHT_CYAN) << " <ID>"
+              << Terminal::fg(Terminal::Color::WHITE) << "        Chat ID for message sending\n";
+
+    std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "--parse-mode"
+              << Terminal::fg(Terminal::Color::BRIGHT_CYAN) << " <MODE>"
+              << Terminal::fg(Terminal::Color::WHITE) << "    Message formatting: Markdown, MarkdownV2, HTML\n";
+
+    std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "--silent"
+              << Terminal::fg(Terminal::Color::WHITE) << "            Send message silently (no notification)\n";
+
+    std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "--nopreview"
+              << Terminal::fg(Terminal::Color::WHITE) << "         Disable link preview in message\n";
+
     std::cout << Terminal::reset() << std::endl;
 
     // Environment variables section
@@ -155,6 +177,21 @@ void showHelp() {
     std::cout << Terminal::fg(Terminal::Color::WHITE);
     std::cout << "  # Comprehensive security analysis\n";
     std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "telegramdigger --analyze --token YOUR_TOKEN\n\n";
+    std::cout << Terminal::fg(Terminal::Color::WHITE);
+    std::cout << "  # Send a message to a chat\n";
+    std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "telegramdigger --send-message \"Hello World\" --chatid 123456789\n\n";
+    std::cout << Terminal::fg(Terminal::Color::WHITE);
+    std::cout << "  # Send formatted message with Markdown\n";
+    std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "telegramdigger --send-message \"*bold* _italic_ `code`\" --chatid 123 --parse-mode Markdown\n\n";
+    std::cout << Terminal::fg(Terminal::Color::WHITE);
+    std::cout << "  # Send formatted message with HTML\n";
+    std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "telegramdigger --send-message \"<b>bold</b> <i>italic</i>\" --chatid 123 --parse-mode HTML\n\n";
+    std::cout << Terminal::fg(Terminal::Color::WHITE);
+    std::cout << "  # Send silent message (no notification)\n";
+    std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "telegramdigger --send-message \"Silent alert\" --chatid 123 --silent\n\n";
+    std::cout << Terminal::fg(Terminal::Color::WHITE);
+    std::cout << "  # Send message without link preview\n";
+    std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "telegramdigger --send-message \"Check https://example.com\" --chatid 123 --nopreview\n\n";
     std::cout << Terminal::fg(Terminal::Color::WHITE);
     std::cout << "  # Analyze specific groups or chats\n";
     std::cout << "  " << Terminal::fg(Terminal::Color::BRIGHT_GREEN) << "telegramdigger --analyze --groupid -1001234567890\n";
@@ -306,9 +343,91 @@ std::string getToken(int argc, char* argv[]) {
 }
 
 /**
+ * Get note from command line arguments
+ */
+std::string getNote(int argc, char* argv[]) {
+    for (int i = 1; i < argc - 1; i++) {
+        std::string arg = argv[i];
+        if (arg == "--note") {
+            return argv[i + 1];
+        }
+    }
+    return "";
+}
+
+/**
+ * Get chat ID from command line arguments
+ */
+long long getChatId(int argc, char* argv[]) {
+    for (int i = 1; i < argc - 1; i++) {
+        std::string arg = argv[i];
+        if (arg == "--chatid") {
+            try {
+                return std::stoll(argv[i + 1]);
+            } catch (const std::exception& e) {
+                return 0;
+            }
+        }
+    }
+    return 0;
+}
+
+/**
+ * Get message text from command line arguments
+ */
+std::string getMessage(int argc, char* argv[]) {
+    for (int i = 1; i < argc - 1; i++) {
+        std::string arg = argv[i];
+        if (arg == "--send-message") {
+            return argv[i + 1];
+        }
+    }
+    return "";
+}
+
+/**
+ * Get parse mode from command line arguments
+ */
+std::string getParseMode(int argc, char* argv[]) {
+    for (int i = 1; i < argc - 1; i++) {
+        std::string arg = argv[i];
+        if (arg == "--parse-mode") {
+            return argv[i + 1];
+        }
+    }
+    return "";
+}
+
+/**
+ * Check if --silent flag is present
+ */
+bool hasSilentFlag(int argc, char* argv[]) {
+    for (int i = 1; i < argc; i++) {
+        std::string arg = argv[i];
+        if (arg == "--silent") {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Check if --nopreview flag is present
+ */
+bool hasNoPreviewFlag(int argc, char* argv[]) {
+    for (int i = 1; i < argc; i++) {
+        std::string arg = argv[i];
+        if (arg == "--nopreview") {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
  * Validate bot token
  */
-void validateToken(const std::string& token) {
+void validateToken(const std::string& token, const std::string& note = "") {
     std::cout << Terminal::fg(Terminal::Color::BRIGHT_CYAN) << Terminal::bold();
     if (Terminal::supportsUTF8()) {
         std::cout << Terminal::ICON_SEARCH << " ";
@@ -455,12 +574,16 @@ void validateToken(const std::string& token) {
 
     // Save to tokens-seen file
     if (!config.isTokenSeen(token)) {
-        if (config.saveTokenSeen(token)) {
+        if (config.saveTokenSeen(token, note)) {
             std::cout << Terminal::fg(Terminal::Color::BRIGHT_GREEN);
             if (Terminal::supportsUTF8()) {
                 std::cout << Terminal::ICON_SUCCESS << " ";
             }
-            std::cout << "Token added to seen list\n" << Terminal::reset();
+            std::cout << "Token added to seen list";
+            if (!note.empty()) {
+                std::cout << " with note";
+            }
+            std::cout << "\n" << Terminal::reset();
         }
     } else {
         std::cout << Terminal::fg(Terminal::Color::YELLOW);
@@ -825,6 +948,67 @@ void setWebhook(const std::string& token, const std::string& url) {
     std::cout << "  - Has a valid SSL certificate\n";
     std::cout << "  - Is publicly accessible\n";
     std::cout << "  - Responds with HTTP 200 OK to POST requests\n";
+    std::cout << Terminal::reset();
+}
+
+/**
+ * Send message to chat
+ */
+void sendMessageToChat(const std::string& token, long long chatId, const std::string& message,
+                      const std::string& parseMode = "", bool silent = false, bool noPreview = false) {
+    std::cout << Terminal::fg(Terminal::Color::BRIGHT_CYAN) << Terminal::bold();
+    if (Terminal::supportsUTF8()) {
+        std::cout << "📤 ";
+    }
+    std::cout << "Send Message" << Terminal::reset() << "\n";
+    std::cout << "──────────────────────────────────────────────────\n\n";
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Chat ID: ";
+    std::cout << Terminal::fg(Terminal::Color::BRIGHT_CYAN) << chatId << "\n";
+
+    if (!parseMode.empty()) {
+        std::cout << Terminal::fg(Terminal::Color::WHITE) << "Parse Mode: ";
+        std::cout << Terminal::fg(Terminal::Color::BRIGHT_YELLOW) << parseMode << "\n";
+    }
+
+    if (silent) {
+        std::cout << Terminal::fg(Terminal::Color::WHITE) << "Silent: ";
+        std::cout << Terminal::fg(Terminal::Color::BRIGHT_MAGENTA) << "Yes";
+        if (Terminal::supportsUTF8()) {
+            std::cout << " 🔕";
+        }
+        std::cout << "\n";
+    }
+
+    if (noPreview) {
+        std::cout << Terminal::fg(Terminal::Color::WHITE) << "Link Preview: ";
+        std::cout << Terminal::fg(Terminal::Color::BRIGHT_MAGENTA) << "Disabled\n";
+    }
+
+    std::cout << Terminal::fg(Terminal::Color::WHITE) << "Message: ";
+    std::cout << Terminal::fg(Terminal::Color::BRIGHT_WHITE) << message << "\n\n";
+    std::cout << Terminal::reset();
+
+    std::cout << Terminal::fg(Terminal::Color::CYAN) << "Sending message...\n" << Terminal::reset();
+
+    TelegramApi api(token);
+    long long messageId = 0;
+    bool success = api.sendMessage(chatId, message, messageId, parseMode, silent, noPreview);
+
+    if (!success) {
+        std::cout << "\n";
+        Terminal::error("Failed to send message");
+        std::cout << "\n" << Terminal::fg(Terminal::Color::RED) << "Error: " << Terminal::fg(Terminal::Color::BRIGHT_RED);
+        std::cout << api.getLastError() << Terminal::reset() << "\n";
+        return;
+    }
+
+    std::cout << "\n";
+    Terminal::success("Message sent successfully!");
+
+    std::cout << "\n" << Terminal::fg(Terminal::Color::WHITE);
+    std::cout << "Message ID: " << Terminal::fg(Terminal::Color::BRIGHT_WHITE);
+    std::cout << messageId << "\n";
     std::cout << Terminal::reset();
 }
 
@@ -1667,6 +1851,67 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
+    // Check for --send-message flag
+    bool shouldSendMessage = false;
+    for (int i = 1; i < argc; i++) {
+        std::string arg = argv[i];
+        if (arg == "--send-message") {
+            shouldSendMessage = true;
+            break;
+        }
+    }
+
+    // Handle send message
+    if (shouldSendMessage) {
+        std::string token = getToken(argc, argv);
+
+        if (token.empty()) {
+            Terminal::error("No bot token provided");
+            std::cout << "\n" << Terminal::fg(Terminal::Color::YELLOW);
+            std::cout << "Please provide a token using one of these methods:\n";
+            std::cout << "  1. Command line: " << Terminal::fg(Terminal::Color::BRIGHT_GREEN);
+            std::cout << "--token <TOKEN>\n";
+            std::cout << Terminal::fg(Terminal::Color::YELLOW);
+            std::cout << "  2. Environment:  " << Terminal::fg(Terminal::Color::BRIGHT_MAGENTA);
+            std::cout << "export TGDIGGER_TOKEN=<TOKEN>\n";
+            std::cout << Terminal::fg(Terminal::Color::YELLOW);
+            std::cout << "  3. Config file:  " << Terminal::fg(Terminal::Color::BRIGHT_CYAN);
+            std::cout << "~/.telegramdigger/settings.conf\n";
+            std::cout << Terminal::reset();
+            return 1;
+        }
+
+        long long chatId = getChatId(argc, argv);
+        if (chatId == 0) {
+            Terminal::error("No chat ID provided");
+            std::cout << "\n" << Terminal::fg(Terminal::Color::YELLOW);
+            std::cout << "Usage: " << Terminal::fg(Terminal::Color::BRIGHT_GREEN);
+            std::cout << "--send-message \"Your message\" --chatid <CHAT_ID>\n";
+            std::cout << Terminal::fg(Terminal::Color::YELLOW);
+            std::cout << "Example: " << Terminal::fg(Terminal::Color::BRIGHT_GREEN);
+            std::cout << "--send-message \"Hello World\" --chatid 123456789\n";
+            std::cout << Terminal::reset();
+            return 1;
+        }
+
+        std::string message = getMessage(argc, argv);
+        if (message.empty()) {
+            Terminal::error("No message text provided");
+            std::cout << "\n" << Terminal::fg(Terminal::Color::YELLOW);
+            std::cout << "Usage: " << Terminal::fg(Terminal::Color::BRIGHT_GREEN);
+            std::cout << "--send-message \"Your message\" --chatid <CHAT_ID>\n";
+            std::cout << Terminal::reset();
+            return 1;
+        }
+
+        std::string parseMode = getParseMode(argc, argv);
+        bool silent = hasSilentFlag(argc, argv);
+        bool noPreview = hasNoPreviewFlag(argc, argv);
+
+        sendMessageToChat(token, chatId, message, parseMode, silent, noPreview);
+        return 0;
+    }
+
     // Check for --analyze flag
     bool shouldAnalyze = false;
     for (int i = 1; i < argc; i++) {
@@ -1751,7 +1996,8 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
-        validateToken(token);
+        std::string note = getNote(argc, argv);
+        validateToken(token, note);
         return 0;
     }
 

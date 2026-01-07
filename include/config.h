@@ -66,7 +66,7 @@ public:
     /**
      * Save token to tokens-seen file
      */
-    bool saveTokenSeen(const std::string& token);
+    bool saveTokenSeen(const std::string& token, const std::string& note = "");
 
     /**
      * Check if token has been seen before
