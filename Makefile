@@ -32,7 +32,7 @@ BINDIR := $(PREFIX)/bin
 MANDIR := $(PREFIX)/share/man/man1
 
 # Version information
-VERSION := 0.6.1
+VERSION := 0.7.0
 PACKAGE_NAME := telegramdigger
 ARCH := $(shell dpkg --print-architecture)
 DEB_PACKAGE := $(PACKAGE_NAME)_$(VERSION)_$(ARCH).deb
